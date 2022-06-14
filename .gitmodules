@@ -1,0 +1,6 @@
+[submodule "lib/Driver_-_Talon-Auxiliary"]
+	path = lib/Driver_-_Talon-Auxiliary
+	url = https://github.com/gemsiot/Driver_-_Talon-Auxiliary.git
+[submodule "lib/PCAL9535A_Library"]
+	path = lib/PCAL9535A_Library
+	url = https://github.com/gemsiot/PCAL9535A_Library.git

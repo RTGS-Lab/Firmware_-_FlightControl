@@ -4,3 +4,15 @@
 [submodule "lib/PCAL9535A_Library"]
 	path = lib/PCAL9535A_Library
 	url = https://github.com/gemsiot/PCAL9535A_Library.git
+[submodule "lib/Driver_-_Kestrel-FileHandler"]
+	path = lib/Driver_-_Kestrel-FileHandler
+	url = https://github.com/gemsiot/Driver_-_Kestrel-FileHandler.git
+[submodule "lib/Driver_-_Kestrel"]
+	path = lib/Driver_-_Kestrel
+	url = https://github.com/gemsiot/Driver_-_Kestrel.git
+[submodule "lib/SdFat"]
+	path = lib/SdFat
+	url = https://github.com/greiman/SdFat.git
+[submodule "lib/MB85RC256V-FRAM-RK"]
+	path = lib/MB85RC256V-FRAM-RK
+	url = https://github.com/rickkas7/MB85RC256V-FRAM-RK.git

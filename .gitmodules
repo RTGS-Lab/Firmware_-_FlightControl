@@ -16,3 +16,15 @@
 [submodule "lib/MB85RC256V-FRAM-RK"]
 	path = lib/MB85RC256V-FRAM-RK
 	url = https://github.com/rickkas7/MB85RC256V-FRAM-RK.git
+[submodule "lib/Driver_-_Talon-I2C"]
+	path = lib/Driver_-_Talon-I2C
+	url = https://github.com/gemsiot/Driver_-_Talon-I2C.git
+[submodule "lib/MCP3421"]
+	path = lib/MCP3421
+	url = https://github.com/NorthernWidget/MCP3421.git
+[submodule "lib/SparkFun_PCA9536_Arduino_Library"]
+	path = lib/SparkFun_PCA9536_Arduino_Library
+	url = https://github.com/sparkfun/SparkFun_PCA9536_Arduino_Library.git
+[submodule "lib/Driver_-_Haar"]
+	path = lib/Driver_-_Haar
+	url = https://github.com/gemsiot/Driver_-_Haar.git

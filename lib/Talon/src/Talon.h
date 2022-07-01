@@ -5,6 +5,7 @@ class Talon
 {
 	public:
 		// Talon();
+		virtual String begin(time_t time, bool &criticalFault, bool &fault);
 		int restart();
 		virtual int enableData(uint8_t Port, bool state){
 			return 0;
@@ -29,6 +30,11 @@ class Talon
 		};
 		virtual void setTalonPort(uint8_t port_);
 		virtual bool isPresent();
+	// protected:
+		virtual uint8_t getNumPorts() {
+			return 0; //DEBUG!
+		};
+		uint8_t talonInterface = 0;
 		// virtual uint8_t getPort();
 		// virtual void setPort(uint8_t port);
 

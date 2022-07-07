@@ -28,3 +28,6 @@
 [submodule "lib/Driver_-_Haar"]
 	path = lib/Driver_-_Haar
 	url = https://github.com/gemsiot/Driver_-_Haar.git
+[submodule "lib/Driver_-_Gonk"]
+	path = lib/Driver_-_Gonk
+	url = https://github.com/gemsiot/Driver_-_Gonk.git

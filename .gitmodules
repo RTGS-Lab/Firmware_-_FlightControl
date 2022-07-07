@@ -31,3 +31,9 @@
 [submodule "lib/Driver_-_Gonk"]
 	path = lib/Driver_-_Gonk
 	url = https://github.com/gemsiot/Driver_-_Gonk.git
+[submodule "lib/Driver_-_Talon"]
+	path = lib/Driver_-_Talon
+	url = https://github.com/gemsiot/Driver_-_Talon.git
+[submodule "lib/Driver_-_Sensor"]
+	path = lib/Driver_-_Sensor
+	url = https://github.com/gemsiot/Driver_-_Sensor.git

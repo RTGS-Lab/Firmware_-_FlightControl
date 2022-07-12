@@ -5,6 +5,8 @@
  * Date:
  */
 
+#define RAPID_START  //Does not wait for remote connection on startup
+#define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
 #include <PCAL9535A.h>
 #include <Sensor.h>
@@ -20,6 +22,8 @@
 const String firmwareVersion = "1.0.1";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
+const unsigned long maxConnectTime = 120000; //Wait up to 120 seconds for systems to connect 
+const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);
@@ -73,6 +77,7 @@ namespace PinsIOAlpha {
 	constexpr uint16_t SD_EN = 12;
 	constexpr uint16_t AUX_EN = 15;
 	constexpr uint16_t CE = 11;
+	constexpr uint16_t LED_EN = 13;
 }
 
 namespace PinsIOBeta { //For Kestrel v1.1
@@ -94,14 +99,15 @@ namespace PinsIOBeta { //For Kestrel v1.1
 	constexpr uint16_t FAULT4 = 14;
 }
 
-// SYSTEM_MODE(MANUAL);
+SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(DISABLED);
-SYSTEM_MODE(AUTOMATIC);
+// SYSTEM_MODE(AUTOMATIC);
 
 void setup() {
 	//////////// MANUAL POSITIONING //////////////////
   	// talons[aux.getTalonPort()] = &aux; //Place talon objects at coresponding positions in array
 	// talons[aux1.getTalonPort()] = &aux1;
+	time_t startTime = millis();
 	Particle.function("nodeID", setNodeID);
 	Serial.begin(115200); 
 	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
@@ -119,6 +125,8 @@ void setup() {
 	ioBeta.begin(); //RESTORE
 	ioBeta.pinMode(PinsIOBeta::SEL2, OUTPUT); //DEBUG
 	ioBeta.digitalWrite(PinsIOBeta::SEL2, LOW); //DEBUG
+	ioAlpha.pinMode(PinsIOAlpha::LED_EN, OUTPUT);
+	ioAlpha.digitalWrite(PinsIOAlpha::LED_EN, LOW); //Turn on LED indicators 
 
 	if(Serial.available()) {
 		//COMMAND MODE!
@@ -224,6 +232,23 @@ void setup() {
 	fileSys.writeToParticle(initDiagnostic, "diagnostic"); 
 	// logger.enableSD(true);
 	fileSys.writeToSD(initDiagnostic, "Dummy.txt");
+
+	#ifndef RAPID_START  //Only do this if not rapid starting
+	while((!Particle.connected() || logger.gps.getFixType() == 0) && (millis() - startTime) < maxConnectTime) { //Wait while at least one of the remote systems is not connected 
+		if(Particle.connected()) logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //If cell is connected, set to PASS state
+		if(logger.gps.getTimeValid() == true) {
+			if(logger.gps.getFixType() >= 2) { //If you get a 2D fix or better, pass GPS 
+				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); 
+			}
+			else logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PREPASS); //If time is good, set preliminary pass only
+		}
+	}
+	#endif
+	
+	if(Particle.connected()) logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //Catches connection of cell is second device to connect
+	else logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::ERROR); //If cell still not connected, display error
+	if(logger.gps.getFixType() >= 2) logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); //Catches connection of GPS is second device to connect
+	else logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::ERROR); //If GPS fails to connect after period, set back to error
 	// Particle.publish("diagnostic", initDiagnostic);
 
 	// logger.enableData(3, true);
@@ -237,6 +262,7 @@ void loop() {
   // aux.sleep(false);
   static int count = 1; //Keep track of number of cycles
 
+	if(System.millis() > indicatorTimeout) logger.setIndicatorState(IndicatorLight::ALL, IndicatorMode::NONE); //Turn LED indicators off if it has been longer than timeout since startup (use system.millis() which does not rollover)
 	bool alarm = logger.waitUntilTimerDone(); //Wait until the timer period has finished 
 	if(alarm) Serial.println("RTC Wakeup"); //DEBUG!
 	else Serial.println("Timeout Wakeup"); //DEBUG!
@@ -332,10 +358,11 @@ String getErrorString()
 	unsigned long numErrors = 0; //Used to keep track of total errors across all devices 
 	String errors = "{\"Error\":{";
 	errors = errors + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	errors = errors + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosTimeString() + "],";
 	if(globalNodeID != "") errors = errors + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else errors = errors + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	errors = errors + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	errors = errors + "\"Devices\":[";
+	errors = errors + "\"Sensors\":[";
 	for(int i = 0; i < numSensors; i++) {
 		if(sensors[i]->totalErrors() > 0) {
 			numErrors = numErrors + sensors[i]->totalErrors(); //Increment the total error count
@@ -354,10 +381,11 @@ String getDataString()
 {
 	String data = "{\"Data\":{";
 	data = data + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	data = data + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosTimeString() + "],";
 	if(globalNodeID != "") data = data + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else data = data + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	data = data + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	data = data + "\"Devices\":[";
+	data = data + "\"Sensors\":[";
 	for(int i = 0; i < numSensors; i++) {
 		logger.enablePower(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon
 		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon
@@ -390,9 +418,10 @@ String getDiagnosticString(uint8_t level)
 {
 	String leader = "{\"Diagnostic\":{";
 	leader = leader + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	leader = leader + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosTimeString() + "],";
 	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Devices\":["; //Concatonate number of sensors and level 
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Sensors\":["; //Concatonate number of sensors and level 
 	String closer = "]}}";
 	String output = leader;
 
@@ -430,6 +459,7 @@ String getMetadataString()
 {
 	String metadata = "{\"Metadata\":{";
 	metadata = metadata + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	metadata = metadata + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosTimeString() + "],";
 	if(globalNodeID != "") metadata = metadata + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else metadata = metadata + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	metadata = metadata + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
@@ -438,7 +468,7 @@ String getMetadataString()
 	metadata = metadata + "\"OS\":\"" + System.version() + "\",";
 	metadata = metadata + "\"ID\":\"" + System.deviceID() + "\"},";
 	//FIX! Add support for device name 
-	metadata = metadata + "\"Devices\":[";
+	metadata = metadata + "\"Sensors\":[";
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
 		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
@@ -463,10 +493,12 @@ String initSensors()
 {
 	String leader = "{\"Diagnostic\":{";
 	leader = leader + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Devices\":["; //Concatonate number of sensors 
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Sensors\":["; //Concatonate number of sensors 
 	
 	String closer = "]}}";
 	String output = leader;
+	bool reportCriticalError = false; //Used to keep track of the global status of the error indications for all sensors
+	bool reportError = false;
 
 	// output = output + "\"Devices\":[";
 	for(int i = 0; i < numSensors; i++) {
@@ -486,6 +518,8 @@ String initSensors()
 		bool hasError = false;
 
   		String initDiagnostic = sensors[i]->begin(Time.now(), hasCriticalError, hasError);
+		if(hasError) reportError = true; //Set if any of them throw an error
+		if(hasCriticalError) reportCriticalError = true; //Set if any of them throw a critical error
 		if(output.length() - output.lastIndexOf('\n') + initDiagnostic.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
 			if(i > 0) output = output + ","; //Add preceeding comma if not the first entry
 			output = output + initDiagnostic; //Append result 
@@ -497,6 +531,10 @@ String initSensors()
 		}
 		
 	}
+	if(reportCriticalError) logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::ERROR_CRITICAL);
+	else if(reportError) logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::ERROR); //Only set minimal error state if critical error is not thrown
+	else logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::PASS); //If no errors are reported, set to pass state
+	
 	output = output + "]}}"; //Close diagnostic
 	return output;
 }

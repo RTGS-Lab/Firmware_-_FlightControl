@@ -1,3 +1,9 @@
+/******************************************************/
+//       THIS IS A GENERATED FILE - DO NOT EDIT       //
+/******************************************************/
+
+#include "Particle.h"
+#line 1 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
 /*
  * Project FlightControl_Demo
  * Description:
@@ -5,6 +11,18 @@
  * Date:
  */
 
+void setup();
+void loop();
+void logEvents(uint8_t type);
+String getErrorString();
+String getDataString();
+String getDiagnosticString(uint8_t level);
+String getMetadataString();
+String initSensors();
+bool serialConnected();
+void systemConfig();
+int setNodeID(String nodeID);
+#line 8 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
 #define RAPID_START  //Does not wait for remote connection on startup
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>

@@ -124,25 +124,32 @@ namespace PinsIOBeta { //For Kestrel v1.1
 
 // SYSTEM_MODE(MANUAL);
 SYSTEM_MODE(SEMI_AUTOMATIC);
-SYSTEM_THREAD(DISABLED);
+SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
 // SYSTEM_MODE(AUTOMATIC);
 
 void setup() {
 	// System.disableReset(); //DEBUG!
+	// RESET_REASON_PIN_RESET
+	// RESET_REASON_POWER_DOWN
 	System.enableFeature(FEATURE_RESET_INFO); //DEBUG!
+	if(System.resetReason() != RESET_REASON_POWER_DOWN) {
+		//DEBUG! Set safe mode 
+		Particle.connect(); //DEBUG! //If reset not caused by power switch, assume something bad happened, just connect to particle straight away
+	}
 	//////////// MANUAL POSITIONING //////////////////
   	// talons[aux.getTalonPort()] = &aux; //Place talon objects at coresponding positions in array
 	// talons[aux1.getTalonPort()] = &aux1;
 	time_t startTime = millis();
 	Particle.function("nodeID", setNodeID);
 	Serial.begin(1000000); 
-	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
+	
 	Serial.println(System.resetReason()); //DEBUG!
 	bool hasCriticalError = false;
 	bool hasError = false;
 	// logger.begin(Time.now(), hasCriticalError, hasError); //Needs to be called the first time with Particle time since I2C not yet initialized 
 	logger.begin(0, hasCriticalError, hasError); //Called with 0 since time collection system has not been initialized 
-  	fileSys.begin();
+	logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::INIT);
+	fileSys.begin(false); //Initialzie, but do not attempt backhaul
 
 	//   I2C_OnBoardEn(true); 	
 	// Wire.setClock(400000); //Confirm operation in fast mode
@@ -155,11 +162,15 @@ void setup() {
 	// ioBeta.digitalWrite(PinsIOBeta::SEL2, LOW); //DEBUG
 	ioAlpha.pinMode(PinsIOAlpha::LED_EN, OUTPUT);
 	ioAlpha.digitalWrite(PinsIOAlpha::LED_EN, LOW); //Turn on LED indicators 
-
+	logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::IDLE);
+	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
 	if(Serial.available()) {
 		//COMMAND MODE!
+		logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::COMMAND);
 		systemConfig();
 	}
+	logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::WAITING);
+	Particle.connect(); //Once passed attempted serial connect, try to connect to particle 
 
 	////////// ADD INTERRUPTS!
 	// for(int i = 1; i <= Kestrel::numTalonPorts; i++) { //Iterate over ALL ports

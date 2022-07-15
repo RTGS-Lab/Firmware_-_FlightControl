@@ -104,34 +104,42 @@ namespace PinsIOBeta { //For Kestrel v1.1
 }
 
 SYSTEM_MODE(MANUAL);
+// SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(DISABLED);
 // SYSTEM_MODE(AUTOMATIC);
 
 void setup() {
 	// System.disableReset(); //DEBUG!
+	// RESET_REASON_PIN_RESET
+	// RESET_REASON_POWER_DOWN
 	System.enableFeature(FEATURE_RESET_INFO); //DEBUG!
+	// if(System.resetReason() != RESET_REASON_POWER_DOWN) {
+	// 	//DEBUG! Set safe mode 
+	// 	Particle.connect(); //DEBUG! //If reset not caused by power switch, assume something bad happened, just connect to particle straight away
+	// }
 	//////////// MANUAL POSITIONING //////////////////
   	// talons[aux.getTalonPort()] = &aux; //Place talon objects at coresponding positions in array
 	// talons[aux1.getTalonPort()] = &aux1;
 	time_t startTime = millis();
 	Particle.function("nodeID", setNodeID);
-	Serial.begin(115200); 
-	// waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
+	Serial.begin(1000000); 
+	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
 	Serial.println(System.resetReason()); //DEBUG!
 	bool hasCriticalError = false;
 	bool hasError = false;
-	logger.begin(Time.now(), hasCriticalError, hasError); //Needs to be called the first time with Particle time since I2C not yet initialized 
+	// logger.begin(Time.now(), hasCriticalError, hasError); //Needs to be called the first time with Particle time since I2C not yet initialized 
+	logger.begin(0, hasCriticalError, hasError); //Called with 0 since time collection system has not been initialized 
   	fileSys.begin();
 
 	//   I2C_OnBoardEn(true); 	
 	// Wire.setClock(400000); //Confirm operation in fast mode
 	// Wire.begin();
-	logger.enableI2C_Global(false);
+	logger.enableI2C_Global(false); //Connect to internal bus
 	logger.enableI2C_OB(true);
 	ioAlpha.begin(); //RESTORE
 	ioBeta.begin(); //RESTORE
-	ioBeta.pinMode(PinsIOBeta::SEL2, OUTPUT); //DEBUG
-	ioBeta.digitalWrite(PinsIOBeta::SEL2, LOW); //DEBUG
+	// ioBeta.pinMode(PinsIOBeta::SEL2, OUTPUT); //DEBUG
+	// ioBeta.digitalWrite(PinsIOBeta::SEL2, LOW); //DEBUG
 	ioAlpha.pinMode(PinsIOAlpha::LED_EN, OUTPUT);
 	ioAlpha.digitalWrite(PinsIOAlpha::LED_EN, LOW); //Turn on LED indicators 
 
@@ -158,6 +166,8 @@ void setup() {
 	// for(int i = 0; i < numTalons; i++) { //Initialize all Talons //DEBUG!
 	// 	talons[i]->begin(Time.now(), hasCriticalError, hasError);
 	// }
+	logger.enableI2C_Global(true); //Connect to external bus to talk to sensors/Talons
+	logger.enableI2C_OB(false);
 	for(int port = 1; port <= Kestrel::numTalonPorts; port++) { //Test all ports
 		logger.enableData(port, true); //Turn on specific channel
 		for(int t = 0; t < numTalons; t++) { //Iterate over all Talon objects
@@ -170,8 +180,8 @@ void setup() {
 				logger.enablePower(port, false); 
 				logger.enablePower(port, true); 
 				// logger.enableAuxPower(true);
-				logger.enableI2C_Global(true);
-				logger.enableI2C_OB(false);
+				// logger.enableI2C_Global(true);
+				// logger.enableI2C_OB(false);
 				quickTalonShutdown(); //Quickly disables power to all ports on I2C or SDI talons, this is a kluge 
 				if(talonsToTest[t]->isPresent()) { //Test if that Talon is present, if it is, configure the port
 					talonsToTest[t]->setTalonPort(port);
@@ -204,10 +214,10 @@ void setup() {
 			logger.enablePower(i + 1, false); 
 			logger.enablePower(i + 1, true);
 			logger.configTalonSense(); //Setup to allow for current testing 
-			logger.enableI2C_Global(true);
-			logger.enableI2C_OB(false);
-			talons[i]->begin(Time.now(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //DEBUG!
-			// talons[i]->begin(logger.getTime(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
+			// logger.enableI2C_Global(true);
+			// logger.enableI2C_OB(false);
+			// talons[i]->begin(Time.now(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //DEBUG!
+			talons[i]->begin(logger.getTime(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
 			logger.enableData(i + 1, false); //Turn data back off to prevent conflict 
 		}
 	}
@@ -216,8 +226,8 @@ void setup() {
 		// Serial.println(talons[t]->talonInterface); //DEBUG!
 		if(talons[t]->talonInterface != BusType::NONE && talons[t]) { //Only proceed if Talon has a bus which can be iterated over, and the talon in question exists
 			logger.enableData(talons[t]->getTalonPort(), true); //Turn on specific channel
-			logger.enableI2C_Global(true);
-			logger.enableI2C_OB(false);
+			// logger.enableI2C_Global(true);
+			// logger.enableI2C_OB(false);
 			talons[t]->disableDataAll(); //Turn off all data ports on Talon
 			for(int p = 1; p <= talons[t]->getNumPorts(); p++) { //Iterate over each port on given Talon
 				talons[t]->enablePower(p, true); //Turn data and power on for specific channel
@@ -399,6 +409,7 @@ String getErrorString()
 	errors = errors + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosTimeString() + "],";
 	if(globalNodeID != "") errors = errors + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else errors = errors + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
+	errors = errors + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	errors = errors + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
 	errors = errors + "\"Sensors\":[";
 	for(int i = 0; i < numSensors; i++) {
@@ -422,6 +433,7 @@ String getDataString()
 	data = data + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosTimeString() + "],";
 	if(globalNodeID != "") data = data + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else data = data + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
+	data = data + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	data = data + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
 	data = data + "\"Sensors\":[";
 	for(int i = 0; i < numSensors; i++) {
@@ -437,9 +449,9 @@ String getDataString()
 			Serial.print("TALON CALL: "); //DEBUG!
 			Serial.println(sensors[i]->getTalonPort());
 			logger.configTalonSense(); //Setup to allow for current testing
-			talons[sensors[i]->getTalonPort() - 1]->begin(0, dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists 
+			talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists 
 			// logger.enableI2C_OB(false); //Return to isolation mode
-			logger.enableI2C_Global(true);
+			// logger.enableI2C_Global(true);
 		}
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If not a Talon
 			Serial.println("Device "); //DEBUG!
@@ -454,7 +466,7 @@ String getDataString()
 			// sensors[i]->begin(Time.now(), dummy1, dummy2); //DEBUG!
 		}
 		// delay(100); //DEBUG!
-		data = data + sensors[i]->getData(Time.now()); //DEBUG! REPLACE!
+		data = data + sensors[i]->getData(logger.getTime()); //DEBUG! REPLACE!
 		if(i + 1 < numSensors) data = data + ","; //Only append if not last entry
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {
 			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), false); //Turn off data for the given port on the Talon
@@ -472,6 +484,7 @@ String getDiagnosticString(uint8_t level)
 	leader = leader + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosTimeString() + "],";
 	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
+	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Sensors\":["; //Concatonate number of sensors and level 
 	String closer = "]}}";
 	String output = leader;
@@ -490,7 +503,7 @@ String getDiagnosticString(uint8_t level)
 			
 		}
 
-  		String diagnostic = sensors[i]->selfDiagnostic(level, Time.now());
+  		String diagnostic = sensors[i]->selfDiagnostic(level, logger.getTime());
 		if(output.length() - output.lastIndexOf('\n') + diagnostic.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
 			if(i > 0) output = output + ","; //Add preceeding comma if not the first entry
 			output = output + diagnostic; //Append result 
@@ -513,6 +526,7 @@ String getMetadataString()
 	metadata = metadata + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosTimeString() + "],";
 	if(globalNodeID != "") metadata = metadata + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else metadata = metadata + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
+	metadata = metadata + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	metadata = metadata + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
 	metadata = metadata + "\"System\":{";
 	metadata = metadata + "\"Firm\":\"" + firmwareVersion + "\",";
@@ -544,6 +558,7 @@ String initSensors()
 {
 	String leader = "{\"Diagnostic\":{";
 	leader = leader + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Sensors\":["; //Concatonate number of sensors 
 	
 	String closer = "]}}";
@@ -561,7 +576,7 @@ String initSensors()
 		bool dummy2;
 		// if(!sensors[i]->isTalon()) { //If sensor is not Talon
 		logger.configTalonSense(); //Setup to allow for current testing
-		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(0, dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
+		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
 			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data on Talon
 			talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
@@ -572,7 +587,7 @@ String initSensors()
 		bool hasCriticalError = false;
 		bool hasError = false;
 
-  		String initDiagnostic = sensors[i]->begin(Time.now(), hasCriticalError, hasError);
+  		String initDiagnostic = sensors[i]->begin(logger.getTime(), hasCriticalError, hasError);
 		if(hasError) reportError = true; //Set if any of them throw an error
 		if(hasCriticalError) reportCriticalError = true; //Set if any of them throw a critical error
 		if(output.length() - output.lastIndexOf('\n') + initDiagnostic.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count

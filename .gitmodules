@@ -37,3 +37,9 @@
 [submodule "lib/Driver_-_Sensor"]
 	path = lib/Driver_-_Sensor
 	url = https://github.com/gemsiot/Driver_-_Sensor.git
+[submodule "lib/Driver_-_Talon-SDI12"]
+	path = lib/Driver_-_Talon-SDI12
+	url = https://github.com/gemsiot/Driver_-_Talon-SDI12.git
+[submodule "lib/MCP3221"]
+	path = lib/MCP3221
+	url = https://github.com/gemsiot/MCP3221.git

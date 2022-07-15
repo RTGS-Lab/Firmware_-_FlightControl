@@ -17,6 +17,8 @@
 namespace KestrelPins {
 	constexpr uint8_t PortAPins[4] = {A3, A2, A1, A0};
 	constexpr uint8_t PortBPins[4] = {D7, D6, D5, D4};
+	constexpr uint16_t I2C_OB_EN = A6;
+	constexpr uint16_t I2C_GLOBAL_EN = D23;
 }
 
 // class KestrelPins

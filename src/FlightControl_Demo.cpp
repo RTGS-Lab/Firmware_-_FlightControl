@@ -19,6 +19,7 @@ String getDataString();
 String getDiagnosticString(uint8_t level);
 String getMetadataString();
 String initSensors();
+void quickTalonShutdown();
 bool serialConnected();
 void systemConfig();
 int setNodeID(String nodeID);
@@ -126,16 +127,19 @@ SYSTEM_THREAD(DISABLED);
 // SYSTEM_MODE(AUTOMATIC);
 
 void setup() {
+	// System.disableReset(); //DEBUG!
+	System.enableFeature(FEATURE_RESET_INFO); //DEBUG!
 	//////////// MANUAL POSITIONING //////////////////
   	// talons[aux.getTalonPort()] = &aux; //Place talon objects at coresponding positions in array
 	// talons[aux1.getTalonPort()] = &aux1;
 	time_t startTime = millis();
 	Particle.function("nodeID", setNodeID);
 	Serial.begin(115200); 
-	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
+	// waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
+	Serial.println(System.resetReason()); //DEBUG!
 	bool hasCriticalError = false;
 	bool hasError = false;
-	logger.begin(Time.now(), hasCriticalError, hasError);
+	logger.begin(Time.now(), hasCriticalError, hasError); //Needs to be called the first time with Particle time since I2C not yet initialized 
   	fileSys.begin();
 
 	//   I2C_OnBoardEn(true); 	
@@ -156,10 +160,12 @@ void setup() {
 	}
 
 	////////// ADD INTERRUPTS!
-	for(int i = 1; i <= Kestrel::numTalonPorts; i++) { //Iterate over ALL ports
-		logger.enablePower(i, true); //Turn on all power by default
-		logger.enableData(i, false); //Turn off all data by default
-	}
+	// for(int i = 1; i <= Kestrel::numTalonPorts; i++) { //Iterate over ALL ports
+	// 	logger.enablePower(i, true); //Turn on all power by default
+	// 	logger.enablePower(i, false); //Toggle power to reset
+	// 	logger.enablePower(i, true); 
+	// 	logger.enableData(i, false); //Turn off all data by default
+	// }
 
 	////////////// AUTO TALON DETECTION ///////////////////////
 	// talons[0] = &aux; //Place talon objects at arbitrary positions in array
@@ -177,8 +183,15 @@ void setup() {
 			if(talonsToTest[t]->getTalonPort() == 0) { //If port not already specified 
 				Serial.print("New Talon: ");
 				Serial.println(t); 
+				// logger.enableAuxPower(false); //Turn aux power off, then configure port to on, then switch aux power back for faster response
+				// logger.enablePower(port, true); //Toggle power just before testing to get result within 10ms
+				// logger.enablePower(port, false);
+				logger.enablePower(port, false); 
+				logger.enablePower(port, true); 
+				// logger.enableAuxPower(true);
 				logger.enableI2C_Global(true);
 				logger.enableI2C_OB(false);
+				quickTalonShutdown(); //Quickly disables power to all ports on I2C or SDI talons, this is a kluge 
 				if(talonsToTest[t]->isPresent()) { //Test if that Talon is present, if it is, configure the port
 					talonsToTest[t]->setTalonPort(port);
 					talons[port - 1] = talonsToTest[t]; //Copy test talon object to index location in talons array
@@ -196,7 +209,27 @@ void setup() {
 	// talons[aux.getTalonPort() - 1] = &aux; //Place talon objects at detected positions in array
 	// talons[aux1.getTalonPort() - 1] = &aux1; 
 	// talons[i2c.getTalonPort() - 1] = &i2c;
-
+	bool dummy;
+	bool dummy1;
+	for(int i = 0; i < Kestrel::numTalonPorts; i++) {
+		if(talons[i] && talons[i]->getTalonPort() > 0) {
+			Serial.print("BEGIN TALON: "); //DEBUG!
+			Serial.print(talons[i]->getTalonPort()); 
+			Serial.print(",");
+			Serial.println(i);
+			logger.enablePower(i + 1, true); //Turn on specific channel
+			logger.enableData(i + 1, true); 
+			logger.enablePower(i + 1, true); //Toggle power just before testing to get result within 10ms
+			logger.enablePower(i + 1, false); 
+			logger.enablePower(i + 1, true);
+			logger.configTalonSense(); //Setup to allow for current testing 
+			logger.enableI2C_Global(true);
+			logger.enableI2C_OB(false);
+			talons[i]->begin(Time.now(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //DEBUG!
+			// talons[i]->begin(logger.getTime(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
+			logger.enableData(i + 1, false); //Turn data back off to prevent conflict 
+		}
+	}
 	/////////////// SENSOR AUTO DETECTION //////////////////////
 	for(int t = 0; t < numTalons; t++) { //Iterate over each Talon
 		// Serial.println(talons[t]->talonInterface); //DEBUG!
@@ -418,7 +451,15 @@ String getDataString()
 		logger.enableI2C_Global(true);
 		bool dummy1;
 		bool dummy2;
-		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(0, dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists 
+		
+		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) { //DEBUG! REPALCE!
+			Serial.print("TALON CALL: "); //DEBUG!
+			Serial.println(sensors[i]->getTalonPort());
+			logger.configTalonSense(); //Setup to allow for current testing
+			talons[sensors[i]->getTalonPort() - 1]->begin(0, dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists 
+			// logger.enableI2C_OB(false); //Return to isolation mode
+			logger.enableI2C_Global(true);
+		}
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If not a Talon
 			Serial.println("Device "); //DEBUG!
 			Serial.print(i);
@@ -432,7 +473,7 @@ String getDataString()
 			// sensors[i]->begin(Time.now(), dummy1, dummy2); //DEBUG!
 		}
 		// delay(100); //DEBUG!
-		data = data + sensors[i]->getData(Time.now());
+		data = data + sensors[i]->getData(Time.now()); //DEBUG! REPLACE!
 		if(i + 1 < numSensors) data = data + ","; //Only append if not last entry
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {
 			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), false); //Turn off data for the given port on the Talon
@@ -467,11 +508,6 @@ String getDiagnosticString(uint8_t level)
 			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
 			
 		}
-
-		// logger.enableI2C_OB(false);
-		// logger.enableI2C_Global(true);
-		// bool hasCriticalError = false;
-		// bool hasError = false;
 
   		String diagnostic = sensors[i]->selfDiagnostic(level, Time.now());
 		if(output.length() - output.lastIndexOf('\n') + diagnostic.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
@@ -543,7 +579,8 @@ String initSensors()
 		bool dummy1;
 		bool dummy2;
 		// if(!sensors[i]->isTalon()) { //If sensor is not Talon
-		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(0, dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists 
+		logger.configTalonSense(); //Setup to allow for current testing
+		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(0, dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
 			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data on Talon
 			talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
@@ -574,6 +611,49 @@ String initSensors()
 	
 	output = output + "]}}"; //Close diagnostic
 	return output;
+}
+
+void quickTalonShutdown()
+{
+	// Wire.beginTransmission(0x22); //Talk to I2C Talon
+	// Wire.write(0x48); //Point to pullup/pulldown select reg
+	// Wire.write(0xF0); //Set pins 1 - 4 as pulldown
+	// Wire.endTransmission();
+
+	// Wire.beginTransmission(0x22); //Talk to I2C Talon
+	// Wire.write(0x46); //Point to pullup/pulldown enable reg
+	// Wire.write(0x0F); //Enable pulldown on pins 1-4
+	// Wire.endTransmission();
+
+	//////////// DEBUG! /////////////
+	Wire.beginTransmission(0x22); //Talk to I2C Talon
+	Wire.write(0x06); //Point to config port
+	Wire.write(0xF0); //Set pins 1 - 4 as output
+	Wire.endTransmission();
+
+	Wire.beginTransmission(0x22); //Talk to I2C Talon
+	Wire.write(0x02); //Point to output port
+	Wire.write(0xF0); //Set pints 1 - 4 low
+	Wire.endTransmission();
+
+	Wire.beginTransmission(0x22); //Talk to I2C Talon
+	Wire.write(0x00); //Point to port reg
+	// Wire.write(0xF0); //Set pints 1 - 4 low
+	Wire.endTransmission();
+
+	Wire.requestFrom(0x22, 1); 
+	Wire.read(); //Read back current value
+	/////////// END DEBUG! /////////////
+
+	Wire.beginTransmission(0x25); //Talk to SDI-12 Talon
+	Wire.write(0x48); //Point to pullup/pulldown select reg
+	Wire.write(0xF0); //Set pins 1 - 4 as pulldown
+	Wire.endTransmission();
+
+	Wire.beginTransmission(0x25); //Talk to SDI-12 Talon
+	Wire.write(0x46); //Point to pullup/pulldown enable reg
+	Wire.write(0x0F); //Enable pulldown on pins 1-4
+	Wire.endTransmission();
 }
 
 bool serialConnected() //Used to check if a monitor has been connected at the begining of operation for override control 

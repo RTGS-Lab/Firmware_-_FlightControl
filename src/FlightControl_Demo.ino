@@ -481,18 +481,20 @@ String getDataString()
 			// logger.enableI2C_Global(true);
 		}
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If not a Talon
-			Serial.println("Device "); //DEBUG!
+			Serial.print("Device "); //DEBUG!
 			Serial.print(i);
 			Serial.println(" is a sensor");
 			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data ports to start for the given Talon
-			talons[sensors[i]->getTalonPort() - 1]->disablePowerAll(); //Turn off all power ports to start for the given Talon
-			talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
+			// talons[sensors[i]->getTalonPort() - 1]->disablePowerAll(); //Turn off all power ports to start for the given Talon
+			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
 			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), true); //Turn on data for the given port on the Talon
 			// bool dummy1;
 			// bool dummy2;
 			// sensors[i]->begin(Time.now(), dummy1, dummy2); //DEBUG!
 		}
 		// delay(100); //DEBUG!
+		logger.enableI2C_OB(false);
+		logger.enableI2C_Global(true);
 		data = data + sensors[i]->getData(logger.getTime()); //DEBUG! REPLACE!
 		if(i + 1 < numSensors) data = data + ","; //Only append if not last entry
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {

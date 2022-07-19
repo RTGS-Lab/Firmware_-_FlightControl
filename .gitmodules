@@ -43,3 +43,6 @@
 [submodule "lib/MCP3221"]
 	path = lib/MCP3221
 	url = https://github.com/gemsiot/MCP3221.git
+[submodule "lib/Driver_-_SO421"]
+	path = lib/Driver_-_SO421
+	url = https://github.com/gemsiot/Driver_-_SO421.git

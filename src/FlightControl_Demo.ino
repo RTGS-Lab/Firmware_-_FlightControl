@@ -14,7 +14,9 @@
 #include <Kestrel.h>
 #include <KestrelFileHandler.h>
 #include <Haar.h>
+#include <SO421.h>
 #include <I2CTalon.h>
+#include <SDI12Talon.h>
 #include <Gonk.h>
 #include <vector>
 #include <memory>
@@ -27,17 +29,19 @@ const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with i
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);
-AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - port 4 and hardware v1.4
-AuxTalon aux1(0, 0x14); //Instantiate AUX talon with alt - port 3 and hardware v1.4
+AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
+AuxTalon aux1(0, 0x14); //Instantiate AUX talon with alt - null port and hardware v1.4
 I2CTalon i2c(0, 0x21); //Instantiate I2C talon with alt - null port and hardware v2.1
+SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and hardware v1.4
 PCAL9535A ioAlpha(0x20);
 PCAL9535A ioBeta(0x21);
 Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
 Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
+SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
 Gonk battery; //Instantiate with defaults 
 
-const uint8_t numSensors = 7; 
-const uint8_t numTalons = 3;
+const uint8_t numSensors = 8; 
+const uint8_t numTalons = 4;
 String globalNodeID = ""; //Store current node ID
 
 Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
@@ -48,13 +52,15 @@ Sensor* const sensors[numSensors] = {
 	&haar,
 	&haar1, 
 	&logger,
-	&battery
+	&battery,
+	&apogeeO2
 };
 
 Talon* talonsToTest[numTalons] = {
 	&aux,
 	&aux1,
-	&i2c
+	&i2c,
+	&sdi12
 };
 
 // namespace Pins { //Use for B402
@@ -105,7 +111,8 @@ namespace PinsIOBeta { //For Kestrel v1.1
 
 // SYSTEM_MODE(MANUAL);
 SYSTEM_MODE(SEMI_AUTOMATIC);
-SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
+// SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
+SYSTEM_THREAD(DISABLED); 
 // SYSTEM_MODE(AUTOMATIC);
 
 void setup() {
@@ -123,13 +130,19 @@ void setup() {
 	time_t startTime = millis();
 	Particle.function("nodeID", setNodeID);
 	Serial.begin(1000000); 
-	
-	Serial.println(System.resetReason()); //DEBUG!
+	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
+	// Serial.println(System.resetReason()); //DEBUG!
 	bool hasCriticalError = false;
 	bool hasError = false;
 	// logger.begin(Time.now(), hasCriticalError, hasError); //Needs to be called the first time with Particle time since I2C not yet initialized 
 	logger.begin(0, hasCriticalError, hasError); //Called with 0 since time collection system has not been initialized 
 	logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::INIT);
+	bool batState = logger.testForBat(); //Check if a battery is connected
+	logger.enableI2C_OB(false);
+	logger.enableI2C_External(true); //Connect to Gonk I2C port
+	logger.enableI2C_Global(true);
+	if(batState) battery.setIndicatorState(GonkIndicatorMode::SOLID); //Turn on charge indication LEDs during setup 
+	else battery.setIndicatorState(GonkIndicatorMode::BLINKING); //If battery not switched on, set to blinking 
 	fileSys.begin(false); //Initialzie, but do not attempt backhaul
 
 	//   I2C_OnBoardEn(true); 	
@@ -213,6 +226,11 @@ void setup() {
 			Serial.print(talons[i]->getTalonPort()); 
 			Serial.print(",");
 			Serial.println(i);
+			if(talons[i]->talonInterface == BusType::SDI12) {
+				Serial.println("SET FOR SDI12 SEL"); //DEBUG!
+				logger.setDirection(talons[i]->getTalonPort(), HIGH); //If the talon is an SDI12 interface type, set port to use serial interface
+			}
+			else logger.setDirection(talons[i]->getTalonPort(), LOW); //Otherwise set talon to use GPIO interface 
 			logger.enablePower(i + 1, true); //Turn on specific channel
 			logger.enableData(i + 1, true); 
 			logger.enablePower(i + 1, true); //Toggle power just before testing to get result within 10ms
@@ -316,7 +334,10 @@ void loop() {
   // aux.sleep(false);
   static int count = 1; //Keep track of number of cycles
 
-	if(System.millis() > indicatorTimeout) logger.setIndicatorState(IndicatorLight::ALL, IndicatorMode::NONE); //Turn LED indicators off if it has been longer than timeout since startup (use system.millis() which does not rollover)
+	if(System.millis() > indicatorTimeout) {
+		logger.setIndicatorState(IndicatorLight::ALL, IndicatorMode::NONE); //Turn LED indicators off if it has been longer than timeout since startup (use system.millis() which does not rollover)
+		battery.setIndicatorState(GonkIndicatorMode::PUSH_BUTTON); //Turn off indicator lights on battery, return to push button control
+	}
 	bool alarm = logger.waitUntilTimerDone(); //Wait until the timer period has finished 
 	if(alarm) Serial.println("RTC Wakeup"); //DEBUG!
 	else Serial.println("Timeout Wakeup"); //DEBUG!
@@ -647,15 +668,33 @@ void quickTalonShutdown()
 	Wire.read(); //Read back current value
 	/////////// END DEBUG! /////////////
 
-	Wire.beginTransmission(0x25); //Talk to SDI-12 Talon
-	Wire.write(0x48); //Point to pullup/pulldown select reg
-	Wire.write(0xF0); //Set pins 1 - 4 as pulldown
+	// Wire.beginTransmission(0x25); //Talk to SDI-12 Talon
+	// Wire.write(0x48); //Point to pullup/pulldown select reg
+	// Wire.write(0xF0); //Set pins 1 - 4 as pulldown
+	// Wire.endTransmission();
+
+	// Wire.beginTransmission(0x25); //Talk to SDI-12 Talon
+	// Wire.write(0x46); //Point to pullup/pulldown enable reg
+	// Wire.write(0x0F); //Enable pulldown on pins 1-4
+	// Wire.endTransmission();
+
+	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
+	Wire.write(0x06); //Point to config port
+	Wire.write(0xF0); //Set pins 1 - 4 as output
 	Wire.endTransmission();
 
-	Wire.beginTransmission(0x25); //Talk to SDI-12 Talon
-	Wire.write(0x46); //Point to pullup/pulldown enable reg
-	Wire.write(0x0F); //Enable pulldown on pins 1-4
+	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
+	Wire.write(0x02); //Point to output port
+	Wire.write(0xF0); //Set pints 1 - 4 low
 	Wire.endTransmission();
+
+	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
+	Wire.write(0x00); //Point to port reg
+	// Wire.write(0xF0); //Set pints 1 - 4 low
+	Wire.endTransmission();
+
+	Wire.requestFrom(0x25, 1); 
+	Wire.read(); //Read back current value
 }
 
 bool serialConnected() //Used to check if a monitor has been connected at the begining of operation for override control 

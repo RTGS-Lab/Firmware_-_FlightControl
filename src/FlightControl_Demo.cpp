@@ -252,10 +252,13 @@ void setup() {
 			}
 			else logger.setDirection(talons[i]->getTalonPort(), LOW); //Otherwise set talon to use GPIO interface 
 			logger.enablePower(i + 1, true); //Turn on specific channel
-			logger.enableData(i + 1, true); 
-			logger.enablePower(i + 1, true); //Toggle power just before testing to get result within 10ms
-			logger.enablePower(i + 1, false); 
-			logger.enablePower(i + 1, true);
+			logger.enableData(i + 1, true);
+			if(logger.getFault(talons[i]->getTalonPort())) { //Only toggle power if there is a fault on that Talon line
+				logger.enablePower(i + 1, true); //Toggle power just before testing to get result within 10ms
+				logger.enablePower(i + 1, false); 
+				logger.enablePower(i + 1, true);
+			} 
+			
 			logger.configTalonSense(); //Setup to allow for current testing 
 			// logger.enableI2C_Global(true);
 			// logger.enableI2C_OB(false);

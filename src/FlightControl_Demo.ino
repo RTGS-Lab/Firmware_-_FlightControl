@@ -41,24 +41,25 @@ SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unkn
 Gonk battery; //Instantiate with defaults 
 
 const uint8_t numSensors = 8; 
-const uint8_t numTalons = 4;
+const uint8_t numTalons = 3;
 String globalNodeID = ""; //Store current node ID
 
 Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
 Sensor* const sensors[numSensors] = {
 	&aux,
-	&aux1,
+	// &aux1,
 	&i2c,
 	&haar,
 	&haar1, 
 	&logger,
+	&sdi12,
 	&battery,
 	&apogeeO2
 };
 
 Talon* talonsToTest[numTalons] = {
 	&aux,
-	&aux1,
+	// &aux1,
 	&i2c,
 	&sdi12
 };
@@ -476,7 +477,8 @@ String getDataString()
 			Serial.print("TALON CALL: "); //DEBUG!
 			Serial.println(sensors[i]->getTalonPort());
 			logger.configTalonSense(); //Setup to allow for current testing
-			talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists 
+			// talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists 
+			talons[sensors[i]->getTalonPort() - 1]->restart(); //DEBUG! Do only if talon is associated with sensor, and object exists 
 			// logger.enableI2C_OB(false); //Return to isolation mode
 			// logger.enableI2C_Global(true);
 		}
@@ -605,7 +607,8 @@ String initSensors()
 		bool dummy2;
 		// if(!sensors[i]->isTalon()) { //If sensor is not Talon
 		logger.configTalonSense(); //Setup to allow for current testing
-		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
+		// if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
+		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->restart(); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
 			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data on Talon
 			talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon

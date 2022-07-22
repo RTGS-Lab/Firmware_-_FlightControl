@@ -599,7 +599,7 @@ String initSensors()
 	String output = leader;
 	bool reportCriticalError = false; //Used to keep track of the global status of the error indications for all sensors
 	bool reportError = false;
-
+	bool missingSensor = false;
 	// output = output + "\"Devices\":[";
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
@@ -618,7 +618,13 @@ String initSensors()
 			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
 			
 		}
-		
+		if(sensors[i]->getTalonPort() == 0 && sensors[i]->sensorInterface != BusType::CORE) {
+			missingSensor = true; //Set flag if any sensors not assigned to Talon and not a core sensor
+			Serial.print("Missing Sensor: "); //DEBUG!
+			Serial.print(i);
+			Serial.print("\t");
+			Serial.println(sensors[i]->sensorInterface);
+		}
 		bool hasCriticalError = false;
 		bool hasError = false;
 
@@ -636,9 +642,12 @@ String initSensors()
 		}
 		
 	}
-	if(reportCriticalError) logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::ERROR_CRITICAL);
-	else if(reportError) logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::ERROR); //Only set minimal error state if critical error is not thrown
+	if(missingSensor) logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::ERROR);
 	else logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::PASS); //If no errors are reported, set to pass state
+	//FIX! Replace!
+	// if(reportCriticalError) logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::ERROR_CRITICAL);
+	// else if(reportError) logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::ERROR); //Only set minimal error state if critical error is not thrown
+	// else logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::PASS); //If no errors are reported, set to pass state
 	
 	output = output + "]}}"; //Close diagnostic
 	return output;

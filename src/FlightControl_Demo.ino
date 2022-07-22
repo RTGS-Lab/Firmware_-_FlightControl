@@ -5,7 +5,7 @@
  * Date:
  */
 
-#define RAPID_START  //Does not wait for remote connection on startup
+// #define RAPID_START  //Does not wait for remote connection on startup
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
 #include <PCAL9535A.h>
@@ -15,6 +15,8 @@
 #include <KestrelFileHandler.h>
 #include <Haar.h>
 #include <SO421.h>
+#include <SP421.h>
+#include <TEROS11.h>
 #include <I2CTalon.h>
 #include <SDI12Talon.h>
 #include <Gonk.h>
@@ -23,9 +25,10 @@
 
 const String firmwareVersion = "1.0.1";
 
-const int backhaulCount = 3; //Number of log events before backhaul is performed 
-const unsigned long maxConnectTime = 120000; //Wait up to 120 seconds for systems to connect 
+const int backhaulCount = 1; //Number of log events before backhaul is performed 
+const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
+const unsigned long logPeriod = 300; //Wait 60 seconds between logs
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);
@@ -38,6 +41,8 @@ PCAL9535A ioBeta(0x21);
 Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
 Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
 SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
+SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface
+TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface
 Gonk battery; //Instantiate with defaults 
 
 const uint8_t numSensors = 8; 
@@ -50,11 +55,13 @@ Sensor* const sensors[numSensors] = {
 	// &aux1,
 	&i2c,
 	&haar,
-	&haar1, 
+	// &haar1, 
 	&logger,
 	&sdi12,
 	&battery,
-	&apogeeO2
+	// &apogeeO2,
+	&soil,
+	&apogeeSolar
 };
 
 Talon* talonsToTest[numTalons] = {
@@ -317,6 +324,7 @@ void setup() {
 			}
 			else logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PREPASS); //If time is good, set preliminary pass only
 		}
+		delay(5000); //Wait 5 seconds between each check to not lock up the process //DEBUG!
 	}
 	#endif
 	
@@ -325,6 +333,9 @@ void setup() {
 	if(logger.gps.getFixType() >= 2) logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); //Catches connection of GPS is second device to connect
 	else logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::ERROR); //If GPS fails to connect after period, set back to error
 	fileSys.tryBackhaul(); //See if we can backhaul any unsent logs
+
+	logEvents(3); //Grab data log with metadata
+	fileSys.dumpFRAM(); //Backhaul this data right away
 	// Particle.publish("diagnostic", initDiagnostic);
 
 	// logger.enableData(3, true);
@@ -340,7 +351,11 @@ void loop() {
 
 	if(System.millis() > indicatorTimeout) {
 		logger.setIndicatorState(IndicatorLight::ALL, IndicatorMode::NONE); //Turn LED indicators off if it has been longer than timeout since startup (use system.millis() which does not rollover)
+		logger.enableI2C_OB(false);
+		logger.enableI2C_External(true); //Connect to Gonk I2C port
+		logger.enableI2C_Global(true);
 		battery.setIndicatorState(GonkIndicatorMode::PUSH_BUTTON); //Turn off indicator lights on battery, return to push button control
+		logger.enableI2C_External(false); //Turn off external I2C
 	}
 	bool alarm = logger.waitUntilTimerDone(); //Wait until the timer period has finished 
 	if(alarm) Serial.println("RTC Wakeup"); //DEBUG!
@@ -350,7 +365,7 @@ void loop() {
 	if((count % 5) == 0) logEvents(3);
 	Serial.println("Log Done"); //DEBUG!
 	logger.feedWDT(); 
-	logger.startTimer(5); //Start timer as soon done reading sensors
+	logger.startTimer(logPeriod); //Start timer as soon done reading sensors
 
 	// Particle.publish("diagnostic", diagnostic);
 	// Particle.publish("error", errors);
@@ -403,7 +418,7 @@ void logEvents(uint8_t type)
 				fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
 			}
 			fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-			fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
+			fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
 		break;
 
 		case 2: //Low period log with diagnostics

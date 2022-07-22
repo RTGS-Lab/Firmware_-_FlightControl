@@ -46,3 +46,9 @@
 [submodule "lib/Driver_-_SO421"]
 	path = lib/Driver_-_SO421
 	url = https://github.com/gemsiot/Driver_-_SO421.git
+[submodule "lib/Driver_-_TEROS11"]
+	path = lib/Driver_-_TEROS11
+	url = https://github.com/gemsiot/Driver_-_TEROS11.git
+[submodule "lib/Driver_-_SP421"]
+	path = lib/Driver_-_SP421
+	url = https://github.com/gemsiot/Driver_-_SP421.git

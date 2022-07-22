@@ -47,7 +47,7 @@ const String firmwareVersion = "1.0.1";
 const int backhaulCount = 1; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
-const unsigned long logPeriod = 300; //Wait 60 seconds between logs
+const unsigned long logPeriod = 60; //Wait 60 seconds between logs
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);

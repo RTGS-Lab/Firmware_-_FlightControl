@@ -62,7 +62,7 @@ Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version
 SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
 SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface
 TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface
-Gonk battery; //Instantiate with defaults 
+Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 
 const uint8_t numSensors = 8; 
 const uint8_t numTalons = 3;

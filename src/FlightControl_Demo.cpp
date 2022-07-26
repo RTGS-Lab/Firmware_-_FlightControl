@@ -42,12 +42,12 @@ int setNodeID(String nodeID);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.0.1";
+const String firmwareVersion = "1.1.0";
 
 const int backhaulCount = 1; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
-const unsigned long logPeriod = 60; //Wait 60 seconds between logs
+const unsigned long logPeriod = 300; //Wait 60 seconds between logs
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);
@@ -257,7 +257,7 @@ void setup() {
 				Serial.println("SET FOR SDI12 SEL"); //DEBUG!
 				logger.setDirection(talons[i]->getTalonPort(), HIGH); //If the talon is an SDI12 interface type, set port to use serial interface
 			}
-			else logger.setDirection(talons[i]->getTalonPort(), LOW); //Otherwise set talon to use GPIO interface 
+			else if(talons[i]->talonInterface != BusType::CORE) logger.setDirection(talons[i]->getTalonPort(), LOW); //Otherwise set talon to use GPIO interface, unless bus type is core, in which case ignore it
 			logger.enablePower(i + 1, true); //Turn on specific channel
 			logger.enableData(i + 1, true);
 			if(logger.getFault(talons[i]->getTalonPort())) { //Only toggle power if there is a fault on that Talon line
@@ -503,8 +503,8 @@ String getDataString()
 	data = data + "\"Sensors\":[";
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
-		logger.enablePower(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon
-		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon
+		if(sensors[i]->sensorInterface != BusType::CORE) logger.enablePower(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon, only if not core system
+		if(sensors[i]->sensorInterface != BusType::CORE) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		bool dummy1;
@@ -559,8 +559,8 @@ String getDiagnosticString(uint8_t level)
 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
-		logger.enablePower(sensors[i]->getTalonPort(), true);
-		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
+		if(sensors[i]->sensorInterface != BusType::CORE) logger.enablePower(sensors[i]->getTalonPort(), true);
+		if(sensors[i]->sensorInterface != BusType::CORE) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		// if(!sensors[i]->isTalon()) { //If sensor is not Talon
@@ -604,7 +604,7 @@ String getMetadataString()
 	metadata = metadata + "\"Sensors\":[";
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
-		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
+		if(sensors[i]->sensorInterface != BusType::CORE) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
 			// if(!sensors[i]->isTalon()) { //If sensor is not Talon
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
 			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data on Talon
@@ -637,7 +637,7 @@ String initSensors()
 	// output = output + "\"Devices\":[";
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
-		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
+		if(sensors[i]->sensorInterface != BusType::CORE) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		bool dummy1;

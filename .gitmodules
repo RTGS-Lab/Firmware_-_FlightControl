@@ -52,3 +52,9 @@
 [submodule "lib/Driver_-_SP421"]
 	path = lib/Driver_-_SP421
 	url = https://github.com/gemsiot/Driver_-_SP421.git
+[submodule "lib/Adafruit_BusIO"]
+	path = lib/Adafruit_BusIO
+	url = https://github.com/gemsiot/Adafruit_BusIO.git
+[submodule "lib/Adafruit_Sensor"]
+	path = lib/Adafruit_Sensor
+	url = https://github.com/gemsiot/Adafruit_Sensor.git

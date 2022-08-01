@@ -58,3 +58,12 @@
 [submodule "lib/Adafruit_Sensor"]
 	path = lib/Adafruit_Sensor
 	url = https://github.com/gemsiot/Adafruit_Sensor.git
+[submodule "lib/Adafruit_SHT4X"]
+	path = lib/Adafruit_SHT4X
+	url = https://github.com/gemsiot/Adafruit_SHT4X.git
+[submodule "lib/MMC5633"]
+	path = lib/MMC5633
+	url = https://github.com/gemsiot/MMC5633.git
+[submodule "lib/MXC6655"]
+	path = lib/MXC6655
+	url = https://github.com/gemsiot/MXC6655.git

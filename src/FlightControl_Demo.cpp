@@ -26,6 +26,7 @@ void systemConfig();
 int detectTalons(String dummyStr);
 int detectSensors(String dummyStr);
 int setNodeID(String nodeID);
+int systemRestart(String resetType);
 #line 9 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
@@ -162,6 +163,7 @@ void setup() {
 	Particle.function("nodeID", setNodeID);
 	Particle.function("findSensors", detectSensors);
 	Particle.function("findTalons", detectTalons);
+	Particle.function("systemRestart", systemRestart);
 	Serial.begin(1000000); 
 	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
 	// Serial.println(System.resetReason()); //DEBUG!
@@ -819,4 +821,11 @@ int setNodeID(String nodeID)
 		globalNodeID = nodeID; //If string passed in is valid, copy it to the global value
 		return 0;
 	}
+}
+
+int systemRestart(String resetType)
+{
+	if(resetType.equalsIgnoreCase("hard")) System.reset(RESET_NO_WAIT); //Perform a hard reset
+	else System.reset(); //Attempt to inform cloud of a reset first 
+	return 1;
 }

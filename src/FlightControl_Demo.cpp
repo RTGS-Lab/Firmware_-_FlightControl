@@ -797,10 +797,11 @@ int detectSensors(String dummyStr)
 							// Serial.print(t);
 							// Serial.print(": ");
 							// Serial.println(talons[t]->getTalonPort());
-							talons[t]->enableData(p, false);
+							// talons[t]->enableData(p, false);
 							break; //Exit the interation after the first sensor tests positive 
 						}
-						talons[t]->enableData(p, false);
+						delay(10); //Wait in between sensor calls
+						// talons[t]->enableData(p, false);
 					}
 				}
 				talons[t]->enableData(p, false); //Turn data back off when done

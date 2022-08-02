@@ -67,3 +67,6 @@
 [submodule "lib/MXC6655"]
 	path = lib/MXC6655
 	url = https://github.com/gemsiot/MXC6655.git
+[submodule "lib/Driver_-_TDR315H"]
+	path = lib/Driver_-_TDR315H
+	url = https://github.com/gemsiot/Driver_-_TDR315H.git

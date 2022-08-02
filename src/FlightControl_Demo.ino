@@ -682,6 +682,12 @@ int detectTalons(String dummyStr)
 	logger.enableI2C_OB(false);
 	for(int port = 1; port <= Kestrel::numTalonPorts; port++) { //Test all ports
 		logger.enableData(port, true); //Turn on specific channel
+		logger.enablePower(port, false); 
+		logger.enablePower(port, true); 
+		// logger.enableAuxPower(true);
+		// logger.enableI2C_Global(true);
+		// logger.enableI2C_OB(false);
+		quickTalonShutdown(); //Quickly disables power to all ports on I2C or SDI talons, this is a kluge 
 		for(int t = 0; t < numTalons; t++) { //Iterate over all Talon objects
 			if(talonsToTest[t]->getTalonPort() == 0) { //If port not already specified 
 				Serial.print("New Talon: ");
@@ -689,12 +695,6 @@ int detectTalons(String dummyStr)
 				// logger.enableAuxPower(false); //Turn aux power off, then configure port to on, then switch aux power back for faster response
 				// logger.enablePower(port, true); //Toggle power just before testing to get result within 10ms
 				// logger.enablePower(port, false);
-				logger.enablePower(port, false); 
-				logger.enablePower(port, true); 
-				// logger.enableAuxPower(true);
-				// logger.enableI2C_Global(true);
-				// logger.enableI2C_OB(false);
-				quickTalonShutdown(); //Quickly disables power to all ports on I2C or SDI talons, this is a kluge 
 				if(talonsToTest[t]->isPresent()) { //Test if that Talon is present, if it is, configure the port
 					talonsToTest[t]->setTalonPort(port);
 					talons[port - 1] = talonsToTest[t]; //Copy test talon object to index location in talons array
@@ -755,7 +755,7 @@ int detectSensors(String dummyStr)
 			// logger.enableI2C_OB(false);
 			talons[t]->disableDataAll(); //Turn off all data ports on Talon
 			for(int p = 1; p <= talons[t]->getNumPorts(); p++) { //Iterate over each port on given Talon
-				talons[t]->enablePower(p, true); //Turn data and power on for specific channel
+				// talons[t]->enablePower(p, true); //Turn data and power on for specific channel
 				talons[t]->enableData(p, true);
 				delay(10); //Wait to make sure sensor is responsive after power up command 
 				Serial.print("Testing Port: "); //DEBUG!

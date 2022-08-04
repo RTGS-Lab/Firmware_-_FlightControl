@@ -45,12 +45,13 @@ SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports an
 TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 
-const uint8_t numSensors = 8; 
+const uint8_t numSensors = 9; 
 const uint8_t numTalons = 3;
 String globalNodeID = ""; //Store current node ID
 
 Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
 Sensor* const sensors[numSensors] = {
+	&fileSys,
 	&aux,
 	// &aux1,
 	&i2c,
@@ -156,7 +157,7 @@ void setup() {
 	logger.enableI2C_Global(true);
 	if(batState) battery.setIndicatorState(GonkIndicatorMode::SOLID); //Turn on charge indication LEDs during setup 
 	else battery.setIndicatorState(GonkIndicatorMode::BLINKING); //If battery not switched on, set to blinking 
-	fileSys.begin(false); //Initialzie, but do not attempt backhaul
+	fileSys.begin(0, hasCriticalError, hasError); //Initialzie, but do not attempt backhaul
 
 	//   I2C_OnBoardEn(true); 	
 	// Wire.setClock(400000); //Confirm operation in fast mode

@@ -158,7 +158,8 @@ void setup() {
 	if(batState) battery.setIndicatorState(GonkIndicatorMode::SOLID); //Turn on charge indication LEDs during setup 
 	else battery.setIndicatorState(GonkIndicatorMode::BLINKING); //If battery not switched on, set to blinking 
 	fileSys.begin(0, hasCriticalError, hasError); //Initialzie, but do not attempt backhaul
-
+	if(hasCriticalError) logger.setIndicatorState(IndicatorLight::STAT,IndicatorMode::ERROR); //Display error state if critical error is reported 
+	else logger.setIndicatorState(IndicatorLight::STAT,IndicatorMode::PASS); //If no critical fault, switch STAT off
 	//   I2C_OnBoardEn(true); 	
 	// Wire.setClock(400000); //Confirm operation in fast mode
 	// Wire.begin();

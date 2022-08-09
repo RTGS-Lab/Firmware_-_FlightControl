@@ -32,43 +32,38 @@ const unsigned long logPeriod = 60; //Wait 60 seconds between logs
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);
-AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
-AuxTalon aux1(0, 0x14); //Instantiate AUX talon with alt - null port and hardware v1.4
-I2CTalon i2c(0, 0x21); //Instantiate I2C talon with alt - null port and hardware v2.1
-SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and hardware v1.4
 PCAL9535A ioAlpha(0x20);
 PCAL9535A ioBeta(0x21);
-Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
-SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface
-TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface
-Gonk battery; //Instantiate with defaults 
+Gonk battery; //Instantiate with defaults
 
-const uint8_t numSensors = 8; 
-const uint8_t numTalons = 3;
 String globalNodeID = ""; //Store current node ID
 
-Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
-Sensor* const sensors[numSensors] = {
-	&aux,
-	// &aux1,
-	&i2c,
-	&haar,
-	// &haar1, 
-	&logger,
-	&sdi12,
-	&battery,
-	// &apogeeO2,
-	&soil,
-	&apogeeSolar
+static constexpr TalonFactory talonTypes[] = {
+	TalonFactory::Create<I2CTalon>(),
+	TalonFactory::Create<SDI12Talon>(),
+	TalonFactory::Create<AuxTalon>(),
 };
 
-Talon* talonsToTest[numTalons] = {
-	&aux,
-	// &aux1,
-	&i2c,
-	&sdi12
+static constexpr I2CTalonSensorFactory i2cSensors[] = {
+	I2CTalonSensorFactory::Create<Haar>(),
+};
+
+static constexpr SDI12TalonSensorFactory sdi12Sensors[] = {
+	SDI12TalonSensorFactory::Create<SO421>(),
+	SDI12TalonSensorFactory::Create<SP421>(),
+	SDI12TalonSensorFactory::Create<TEROS11>(),
+};
+
+Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
+
+// Note: Not currently memory managed
+// Sensors are assumed to be created on startup and never destroyed
+// In the future, maybe move to unique pointers or maybe a separate array for owning the pointers?
+std::vector<Sensor*> sensors = {
+	&logger,
+	&battery,
+	// connected talons will be allocated and placed here on startup
+	// sensors connected to those talons will be allocated and placed here on startup
 };
 
 // namespace Pins { //Use for B402
@@ -195,33 +190,23 @@ void setup() {
 	logger.enableI2C_Global(true); //Connect to external bus to talk to sensors/Talons
 	logger.enableI2C_OB(false);
 	for(int port = 1; port <= Kestrel::numTalonPorts; port++) { //Test all ports
+		logger.enablePower(port, true);
 		logger.enableData(port, true); //Turn on specific channel
-		for(int t = 0; t < numTalons; t++) { //Iterate over all Talon objects
-			if(talonsToTest[t]->getTalonPort() == 0) { //If port not already specified 
-				Serial.print("New Talon: ");
-				Serial.println(t); 
-				// logger.enableAuxPower(false); //Turn aux power off, then configure port to on, then switch aux power back for faster response
-				// logger.enablePower(port, true); //Toggle power just before testing to get result within 10ms
-				// logger.enablePower(port, false);
-				logger.enablePower(port, false); 
-				logger.enablePower(port, true); 
-				// logger.enableAuxPower(true);
-				// logger.enableI2C_Global(true);
-				// logger.enableI2C_OB(false);
-				quickTalonShutdown(); //Quickly disables power to all ports on I2C or SDI talons, this is a kluge 
-				if(talonsToTest[t]->isPresent()) { //Test if that Talon is present, if it is, configure the port
-					talonsToTest[t]->setTalonPort(port);
-					talons[port - 1] = talonsToTest[t]; //Copy test talon object to index location in talons array
-					Serial.print("Talon Port Result "); //DEBUG!
-					Serial.print(t);
-					Serial.print(": ");
-					Serial.println(talonsToTest[t]->getTalonPort());
-					break; //Exit the interation after the first one tests positive 
-				}
+		for (const TalonFactory& factory : talonTypes) {
+			if (factory.isPresent()) {
+				Serial.print("Found ");
+				Serial.print(factory.name);
+				Serial.print(" talon at port ");
+				Serial.println(port);
+				Talon* talon = factory.create(port);
+				talon->setTalonPort(port);
+				sensors.push_back(talon); // Add to the sensor list
+				talons[port - 1] = talon; // Add to the talon list
+				break; // Found a matching talon, all done here
 			}
-			
 		}
 		logger.enableData(port, false); //Turn port back off
+		logger.enablePower(port, false);
 	}
 	// talons[aux.getTalonPort() - 1] = &aux; //Place talon objects at detected positions in array
 	// talons[aux1.getTalonPort() - 1] = &aux1; 
@@ -256,46 +241,53 @@ void setup() {
 		}
 	}
 	/////////////// SENSOR AUTO DETECTION //////////////////////
-	for(int t = 0; t < numTalons; t++) { //Iterate over each Talon
+	for(int t = 0; t < std::size(talons); t++) { //Iterate over each Talon
 		// Serial.println(talons[t]->talonInterface); //DEBUG!
-		if(talons[t]->talonInterface != BusType::NONE && talons[t]) { //Only proceed if Talon has a bus which can be iterated over, and the talon in question exists
-			logger.enableData(talons[t]->getTalonPort(), true); //Turn on specific channel
-			// logger.enableI2C_Global(true);
-			// logger.enableI2C_OB(false);
-			talons[t]->disableDataAll(); //Turn off all data ports on Talon
-			for(int p = 1; p <= talons[t]->getNumPorts(); p++) { //Iterate over each port on given Talon
-				talons[t]->enablePower(p, true); //Turn data and power on for specific channel
-				talons[t]->enableData(p, true);
-				delay(10); //Wait to make sure sensor is responsive after power up command 
-				Serial.print("Testing Port: "); //DEBUG!
-				Serial.print(t + 1);
-				Serial.print(",");
-				Serial.println(p);
-				for(int s = 0; s < numSensors; s++) { //Iterate over all sensors objects
-					if(sensors[s]->getTalonPort() == 0 && talons[t]->talonInterface == sensors[s]->sensorInterface) { //If Talon not already specified AND sensor bus is compatible with Talon bus
-						Serial.print("Test Sensor: "); //DEBUG!
-						Serial.println(s);
-						if(sensors[s]->isPresent()) { //Test if that sensor is present, if it is, configure the port
-							sensors[s]->setTalonPort(t + 1);
-							sensors[s]->setSensorPort(p);
-							Serial.print("Sensor Found:\n\t"); //DEBUG!
-							Serial.println(sensors[s]->getTalonPort());
-							Serial.print('\t');
-							Serial.println(sensors[s]->getSensorPort());
-							// Serial.print("Talon Port Result "); //DEBUG!
-							// Serial.print(t);
-							// Serial.print(": ");
-							// Serial.println(talons[t]->getTalonPort());
-							talons[t]->enableData(p, false);
-							break; //Exit the interation after the first sensor tests positive 
-						}
-						talons[t]->enableData(p, false);
+		if (!talons[t] || talons[t]->talonInterface == BusType::NONE) { continue; }
+
+		Talon* talon = talons[t];
+		logger.enableData(talon->getTalonPort(), true); // Turn on specific channel
+		// logger.enableI2C_Global(true);
+		// logger.enableI2C_OB(false);
+		talon->disableDataAll(); // Turn off all data ports on Talon
+		for (int p = 1, p_end = talon->getNumPorts(); p <= p_end; p++) {
+			talon->enablePower(p, true); // Turn data and power on for specific channel
+			talon->enableData(p, true);
+			delay(10);
+			Serial.print("Testing Port: "); //DEBUG!
+			Serial.print(t + 1);
+			Serial.print(",");
+			Serial.println(p);
+			Sensor* sensor = nullptr;
+			if (talon->talonInterface == BusType::SDI12) {
+				auto* sdi12Talon = static_cast<SDI12Talon*>(talon);
+				for (const SDI12TalonSensorFactory& factory : sdi12Sensors) {
+					if (factory.isPresent(*sdi12Talon, p)) {
+						sensor = factory.create(*sdi12Talon, p);
+						break; // Found a sensor, all done here
 					}
 				}
-				talons[t]->enableData(p, false); //Turn data back off when done
+			} else if (talon->talonInterface == BusType::I2C) {
+				auto* i2cTalon = static_cast<I2CTalon*>(talon);
+				for (const I2CTalonSensorFactory& factory : i2cSensors) {
+					if (factory.isPresent(*i2cTalon, p)) {
+						sensor = factory.create(*i2cTalon, p);
+						break; // Found a sensor, all done here
+					}
+				}
 			}
-			logger.enableData(talons[t]->getTalonPort(), false); //Turn port back off
+			talon->enableData(p, false); // Turn data back off when done
+			if (sensor) { // Did we find a sensor?
+				sensor->setTalonPort(t + 1);
+				sensor->setSensorPort(p);
+				Serial.print("Sensor Found:\n\t"); //DEBUG!
+				Serial.println(sensor->getTalonPort());
+				Serial.print('\t');
+				Serial.println(sensor->getSensorPort());
+				sensors.push_back(sensor);
+			}
 		}
+		logger.enableData(talon->getTalonPort(), false); // Turn port back off
 	}
 
 	// I2C_OnBoardEn(false);	
@@ -456,9 +448,9 @@ String getErrorString()
 	if(globalNodeID != "") errors = errors + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else errors = errors + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	errors = errors + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	errors = errors + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
+	errors = errors + "\"NumDevices\":" + String(sensors.size()) + ","; //Concatonate number of sensors
 	errors = errors + "\"Sensors\":[";
-	for(int i = 0; i < numSensors; i++) {
+	for(int i = 0; i < sensors.size(); i++) {
 		if(sensors[i]->totalErrors() > 0) {
 			numErrors = numErrors + sensors[i]->totalErrors(); //Increment the total error count
 			if(!errors.endsWith("[")) errors = errors + ","; //Only append if not first entry
@@ -480,9 +472,9 @@ String getDataString()
 	if(globalNodeID != "") data = data + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else data = data + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	data = data + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	data = data + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
+	data = data + "\"NumDevices\":" + String(sensors.size()) + ","; //Concatonate number of sensors
 	data = data + "\"Sensors\":[";
-	for(int i = 0; i < numSensors; i++) {
+	for(int i = 0; i < sensors.size(); i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
 		logger.enablePower(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon
 		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon
@@ -516,7 +508,7 @@ String getDataString()
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		data = data + sensors[i]->getData(logger.getTime()); //DEBUG! REPLACE!
-		if(i + 1 < numSensors) data = data + ","; //Only append if not last entry
+		if(i + 1 < sensors.size()) data = data + ","; //Only append if not last entry
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {
 			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), false); //Turn off data for the given port on the Talon
 			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), false); //Turn off power for the given port on the Talon //DEBUG!
@@ -534,11 +526,11 @@ String getDiagnosticString(uint8_t level)
 	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Sensors\":["; //Concatonate number of sensors and level 
+	leader = leader + "\"NumDevices\":" + String(sensors.size()) + ",\"Level\":" + String(level) + ",\"Sensors\":["; //Concatonate number of sensors and level
 	String closer = "]}}";
 	String output = leader;
 
-	for(int i = 0; i < numSensors; i++) {
+	for(int i = 0; i < sensors.size(); i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
 		logger.enablePower(sensors[i]->getTalonPort(), true);
 		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
@@ -576,14 +568,14 @@ String getMetadataString()
 	if(globalNodeID != "") metadata = metadata + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else metadata = metadata + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	metadata = metadata + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	metadata = metadata + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
+	metadata = metadata + "\"NumDevices\":" + String(sensors.size()) + ","; //Concatonate number of sensors
 	metadata = metadata + "\"System\":{";
 	metadata = metadata + "\"Firm\":\"" + firmwareVersion + "\",";
 	metadata = metadata + "\"OS\":\"" + System.version() + "\",";
 	metadata = metadata + "\"ID\":\"" + System.deviceID() + "\"},";
 	//FIX! Add support for device name 
 	metadata = metadata + "\"Sensors\":[";
-	for(int i = 0; i < numSensors; i++) {
+	for(int i = 0; i < sensors.size(); i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
 		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
 			// if(!sensors[i]->isTalon()) { //If sensor is not Talon
@@ -596,7 +588,7 @@ String getMetadataString()
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		metadata = metadata + sensors[i]->getMetadata();
-		if(i + 1 < numSensors) metadata = metadata + ","; //Only append if not last entry
+		if(i + 1 < sensors.size()) metadata = metadata + ","; //Only append if not last entry
 	}
 
 	metadata = metadata + "]}}"; //Close metadata
@@ -608,7 +600,7 @@ String initSensors()
 	String leader = "{\"Diagnostic\":{";
 	leader = leader + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Sensors\":["; //Concatonate number of sensors 
+	leader = leader + "\"NumDevices\":" + String(sensors.size()) + ",\"Sensors\":["; //Concatonate number of sensors
 	
 	String closer = "]}}";
 	String output = leader;
@@ -616,7 +608,7 @@ String initSensors()
 	bool reportError = false;
 	bool missingSensor = false;
 	// output = output + "\"Devices\":[";
-	for(int i = 0; i < numSensors; i++) {
+	for(int i = 0; i < sensors.size(); i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
 		logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
 		logger.enableI2C_OB(false);

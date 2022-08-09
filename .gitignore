@@ -34,3 +34,10 @@
 #VS Code
 .vscode/
 target/
+
+# MacOS stuff
+.DS_Store
+._*
+
+# Preprocessed INO files
+src/FlightControl_Demo.cpp

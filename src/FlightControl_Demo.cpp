@@ -47,7 +47,8 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.1.0";
+const String firmwareVersion = "1.2.0";
+const String schemaVersion = "1.1.0";
 
 const int backhaulCount = 1; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
@@ -152,6 +153,11 @@ SYSTEM_THREAD(DISABLED);
 // SYSTEM_MODE(AUTOMATIC);
 int detectTalons(String dummyStr = "");
 int detectSensors(String dummyStr = "");
+
+String diagnostic = "";
+String errors = "";
+String metadata = "";
+String data = "";
 
 void setup() {
 	// System.disableReset(); //DEBUG!
@@ -260,6 +266,7 @@ void setup() {
 	else logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::ERROR); //If GPS fails to connect after period, set back to error
 	fileSys.tryBackhaul(); //See if we can backhaul any unsent logs
 
+	// fileSys.writeToFRAM(getDiagnosticString(1), DataType::Diagnostic, DestCodes::Both); //DEBUG!
 	logEvents(3); //Grab data log with metadata
 	fileSys.dumpFRAM(); //Backhaul this data right away
 	// Particle.publish("diagnostic", initDiagnostic);
@@ -328,57 +335,107 @@ void loop() {
 
 void logEvents(uint8_t type)
 {
-	String diagnostic = "";
-	String errors = "";
-	String metadata = "";
-	String data = "";
+	
+	// String diagnostic = "";
+	// String errors = "";
+	// String metadata = "";
+	// String data = "";
+	diagnostic = "";
+	errors = "";
+	metadata = "";
+	data = "";
 	Serial.print("LOG: "); //DEBUG!
 	Serial.println(type); 
 	
-	switch(type) {
-		case 1: //Standard, short interval, log
-			
-			data = getDataString();
-			diagnostic = getDiagnosticString(4); //DEBUG! RESTORE
-			errors = getErrorString(); //Get errors last to wait for error codes to be updated //DEBUG! RESTORE
-			// logger.enableI2C_OB(true);
-			// logger.enableI2C_Global(false);
-			Serial.println(errors); //DEBUG!
-			Serial.println(data); //DEBUG!
-			Serial.println(diagnostic); //DEBUG!
-			if(errors.equals("") == false) {
-				// Serial.println("Write Errors to FRAM"); //DEBUG!
-				fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-			}
-			fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-			fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
-		break;
+	if(type == 1) {
+		data = getDataString();
+		diagnostic = getDiagnosticString(4); //DEBUG! RESTORE
+		errors = getErrorString(); //Get errors last to wait for error codes to be updated //DEBUG! RESTORE
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		Serial.println(errors); //DEBUG!
+		Serial.println(data); //DEBUG!
+		Serial.println(diagnostic); //DEBUG!
 
-		case 2: //Low period log with diagnostics
-			data = getDataString();
-			diagnostic = getDiagnosticString(3);
-			errors = getErrorString();
-			// logger.enableI2C_OB(true);
-			// logger.enableI2C_Global(false);
-			if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-			fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-			fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
-		break;
-
-		case 3: //Daily log event with increased diagnostics and metadata
-			data = getDataString();
-			diagnostic = getDiagnosticString(2);
-			metadata = getMetadataString();
-			errors = getErrorString();
-			// logger.enableI2C_OB(true);
-			// logger.enableI2C_Global(false);
-			if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-			fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-			fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
-			fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
-		break;
-
+		if(errors.equals("") == false) {
+			// Serial.println("Write Errors to FRAM"); //DEBUG!
+			fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+		}
+		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
 	}
+	else if(type == 2) {
+		data = getDataString();
+		diagnostic = getDiagnosticString(3);
+		errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+	}
+	else if(type == 3) {
+		data = getDataString();
+		diagnostic = getDiagnosticString(2);
+		metadata = getMetadataString();
+		errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	}
+	// switch(type) {
+	// 	case 1: //Standard, short interval, log
+			
+	// 		data = getDataString();
+	// 		diagnostic = getDiagnosticString(4); //DEBUG! RESTORE
+	// 		errors = getErrorString(); //Get errors last to wait for error codes to be updated //DEBUG! RESTORE
+	// 		// logger.enableI2C_OB(true);
+	// 		// logger.enableI2C_Global(false);
+	// 		Serial.println(errors); //DEBUG!
+	// 		Serial.println(data); //DEBUG!
+	// 		Serial.println(diagnostic); //DEBUG!
+
+	// 		if(errors.equals("") == false) {
+	// 			// Serial.println("Write Errors to FRAM"); //DEBUG!
+	// 			fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+	// 		}
+	// 		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+	// 		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+	// 	break;
+
+	// 	case 2: //Low period log with diagnostics
+	// 		data = getDataString();
+	// 		diagnostic = getDiagnosticString(3);
+	// 		errors = getErrorString();
+	// 		// logger.enableI2C_OB(true);
+	// 		// logger.enableI2C_Global(false);
+	// 		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+	// 		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+	// 		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+	// 	break;
+
+	// 	case 3: //Daily log event with increased diagnostics and metadata
+	// 		data = getDataString();
+	// 		diagnostic = getDiagnosticString(2);
+	// 		metadata = getMetadataString();
+	// 		errors = getErrorString();
+	// 		// logger.enableI2C_OB(true);
+	// 		// logger.enableI2C_Global(false);
+	// 		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+	// 		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+	// 		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+	// 		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	// 	break;
+
+	// }
+	// diagnostic* = (const char*)NULL;
+	// data* = (const char*)NULL;
+	// metadata* = (const char*)NULL;
+	// errors* = (const char*)NULL;
+	
 }
 String getErrorString()
 {
@@ -476,7 +533,7 @@ String getDiagnosticString(uint8_t level)
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Devices\":{"; //Concatonate number of sensors and level 
-	String closer = "}}}";
+	const String closer = "}}}";
 	String output = leader;
 
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
@@ -520,19 +577,25 @@ String getDiagnosticString(uint8_t level)
 
 String getMetadataString()
 {
-	String metadata = "{\"Metadata\":{";
-	metadata = metadata + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
-	metadata = metadata + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosAlt() + "," + logger.getPosTimeString() + "],";
-	if(globalNodeID != "") metadata = metadata + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
-	else metadata = metadata + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
-	metadata = metadata + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	metadata = metadata + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	metadata = metadata + "\"System\":{";
-	metadata = metadata + "\"Firm\":\"" + firmwareVersion + "\",";
-	metadata = metadata + "\"OS\":\"" + System.version() + "\",";
-	metadata = metadata + "\"ID\":\"" + System.deviceID() + "\"},";
+	String leader = "{\"Metadata\":{";
+	leader = leader + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	leader = leader + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosAlt() + "," + logger.getPosTimeString() + "],";
+	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
+	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
+	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
+	leader = leader + "\"Devices\":{";
+	const String closer = "}}}";
+	String output = leader;
+	
+	output = output + "\"System\":{";
+	// output = output + "\"DUMMY\":\"BLOODYMARYBLOODYMARYBLODDYMARY\",";
+	output = output + "\"Schema\":\"" + schemaVersion + "\",";
+	output = output + "\"Firm\":\"" + firmwareVersion + "\",";
+	output = output + "\"OS\":\"" + System.version() + "\",";
+	output = output + "\"ID\":\"" + System.deviceID() + "\"},";
 	//FIX! Add support for device name 
-	metadata = metadata + "\"Devices\":{";
+	
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
@@ -548,16 +611,28 @@ String getMetadataString()
 		logger.enableI2C_Global(true);
 		String val = sensors[i]->getMetadata();
 		// metadata = metadata + sensors[i]->getMetadata();
-		if(!val.equals("")) { //Only append if real result
-			if(deviceCount > 0) metadata = metadata + ","; //Preappend comma only if not first addition
-			metadata = metadata + val;
-			deviceCount++;
-			// if(i + 1 < numSensors) metadata = metadata + ","; //Only append if not last entry
+		// if(!val.equals("")) { //Only append if real result
+		// 	if(deviceCount > 0) metadata = metadata + ","; //Preappend comma only if not first addition
+		// 	metadata = metadata + val;
+		// 	deviceCount++;
+		// 	// if(i + 1 < numSensors) metadata = metadata + ","; //Only append if not last entry
+		// }
+		if(!val.equals("")) {  //Only append if not empty string
+			if(output.length() - output.lastIndexOf('\n') + val.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
+				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
+				output = output + val; //Append result 
+				deviceCount++;
+				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
+			}
+			else {
+				output = output + closer + "\n"; //End this packet
+				output = output + leader + val; //Start a new packet and add new payload 
+			}
 		}
 	}
 
-	metadata = metadata + "}}}"; //Close metadata
-	return metadata;
+	output = output + closer; //Close metadata
+	return output;
 }
 
 String initSensors()

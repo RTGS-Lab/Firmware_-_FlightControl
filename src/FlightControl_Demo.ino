@@ -24,7 +24,7 @@
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.2.1";
+const String firmwareVersion = "1.3.0";
 const String schemaVersion = "1.1.1";
 
 const int backhaulCount = 1; //Number of log events before backhaul is performed 
@@ -694,6 +694,25 @@ void quickTalonShutdown()
 	// Wire.endTransmission();
 
 	//////////// DEBUG! /////////////
+	//// SET SDI-12 TALON First to eliminiate issue with power being applied to Apogee port 
+	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
+	Wire.write(0x02); //Point to output port
+	Wire.write(0x00); //Set pints 1 - 8 low
+	Wire.endTransmission();
+
+	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
+	Wire.write(0x06); //Point to config port
+	Wire.write(0x00); //Set pins 1 - 8 as output
+	Wire.endTransmission();
+
+	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
+	Wire.write(0x00); //Point to port reg
+	// Wire.write(0xF0); //Set pints 1 - 4 low
+	Wire.endTransmission();
+
+	Wire.requestFrom(0x25, 1); 
+	Wire.read(); //Read back current value
+
 	Wire.beginTransmission(0x22); //Talk to I2C Talon
 	Wire.write(0x06); //Point to config port
 	Wire.write(0xF0); //Set pins 1 - 4 as output
@@ -723,23 +742,7 @@ void quickTalonShutdown()
 	// Wire.write(0x0F); //Enable pulldown on pins 1-4
 	// Wire.endTransmission();
 
-	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
-	Wire.write(0x06); //Point to config port
-	Wire.write(0xF0); //Set pins 1 - 4 as output
-	Wire.endTransmission();
-
-	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
-	Wire.write(0x02); //Point to output port
-	Wire.write(0xF0); //Set pints 1 - 4 low
-	Wire.endTransmission();
-
-	Wire.beginTransmission(0x25); //Talk to SDI12 Talon
-	Wire.write(0x00); //Point to port reg
-	// Wire.write(0xF0); //Set pints 1 - 4 low
-	Wire.endTransmission();
-
-	Wire.requestFrom(0x25, 1); 
-	Wire.read(); //Read back current value
+	
 }
 
 bool serialConnected() //Used to check if a monitor has been connected at the begining of operation for override control 
@@ -814,6 +817,14 @@ int detectTalons(String dummyStr)
 		// logger.enableAuxPower(true);
 		// logger.enableI2C_Global(true);
 		// logger.enableI2C_OB(false);
+		// delay(1);//DEBUG!
+		unsigned long localTime = millis();
+		int error = 0;
+		while((millis() - localTime) < 10) { //Wait up to 10ms for connection to be established 
+			Wire.beginTransmission(0);
+			error = Wire.endTransmission();
+			if(error == 0) break; //Exit loop once we are able to connect with Talon 
+		}
 		quickTalonShutdown(); //Quickly disables power to all ports on I2C or SDI talons, this is a kluge 
 		for(int t = 0; t < numTalons; t++) { //Iterate over all Talon objects
 			if(talonsToTest[t]->getTalonPort() == 0) { //If port not already specified 

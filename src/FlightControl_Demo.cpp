@@ -47,7 +47,7 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.3.0";
+const String firmwareVersion = "1.3.1";
 const String schemaVersion = "1.1.1";
 
 const int backhaulCount = 1; //Number of log events before backhaul is performed 
@@ -251,10 +251,12 @@ void setup() {
 	while((!Particle.connected() || logger.gps.getFixType() == 0) && (millis() - startTime) < maxConnectTime) { //Wait while at least one of the remote systems is not connected 
 		if(Particle.connected()) logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //If cell is connected, set to PASS state
 		if(logger.gps.getTimeValid() == true) {
-			if(logger.gps.getFixType() >= 2) { //If you get a 2D fix or better, pass GPS 
+			if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //If you get a 2D fix or better, pass GPS 
 				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); 
 			}
-			else logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PREPASS); //If time is good, set preliminary pass only
+			else {
+				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PREPASS); //If time is good, set preliminary pass only
+			}
 		}
 		delay(5000); //Wait 5 seconds between each check to not lock up the process //DEBUG!
 	}
@@ -262,8 +264,12 @@ void setup() {
 	
 	if(Particle.connected()) logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //Catches connection of cell is second device to connect
 	else logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::ERROR); //If cell still not connected, display error
-	if(logger.gps.getFixType() >= 2) logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); //Catches connection of GPS is second device to connect
-	else logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::ERROR); //If GPS fails to connect after period, set back to error
+	if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //Make fix report is in range and fix is OK
+		logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); //Catches connection of GPS is second device to connect
+	}
+	else {
+		logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::ERROR); //If GPS fails to connect after period, set back to error
+	}
 	fileSys.tryBackhaul(); //See if we can backhaul any unsent logs
 
 	// fileSys.writeToFRAM(getDiagnosticString(1), DataType::Diagnostic, DestCodes::Both); //DEBUG!

@@ -23,11 +23,14 @@ String initSensors();
 void quickTalonShutdown();
 bool serialConnected();
 void systemConfig();
+int sleepSensors();
+int wakeSensors();
 int detectTalons(String dummyStr);
 int detectSensors(String dummyStr);
 int setNodeID(String nodeID);
 int takeSample(String dummy);
 int systemRestart(String resetType);
+int configurePowerSave(int desiredPowerSaveMode);
 #line 9 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
@@ -47,13 +50,14 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.3.1";
+const String firmwareVersion = "B2.0.0";
 const String schemaVersion = "1.1.1";
 
-const int backhaulCount = 1; //Number of log events before backhaul is performed 
+const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
-const unsigned long logPeriod = 60; //Wait 60 seconds between logs
+const unsigned long logPeriod = 300; //Wait 5 minutes between logs
+int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);
@@ -146,6 +150,8 @@ namespace PinsIOBeta { //For Kestrel v1.1
 	constexpr uint16_t FAULT4 = 14;
 }
 
+
+
 // SYSTEM_MODE(MANUAL);
 SYSTEM_MODE(SEMI_AUTOMATIC);
 // SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
@@ -163,6 +169,7 @@ void setup() {
 	// System.disableReset(); //DEBUG!
 	// RESET_REASON_PIN_RESET
 	// RESET_REASON_POWER_DOWN
+	configurePowerSave(PowerSaveModes::BALANCED); //Setup power mode of the system
 	System.enableFeature(FEATURE_RESET_INFO); //DEBUG!
 	if(System.resetReason() != RESET_REASON_POWER_DOWN) {
 		//DEBUG! Set safe mode 
@@ -273,7 +280,7 @@ void setup() {
 	fileSys.tryBackhaul(); //See if we can backhaul any unsent logs
 
 	// fileSys.writeToFRAM(getDiagnosticString(1), DataType::Diagnostic, DestCodes::Both); //DEBUG!
-	logEvents(3); //Grab data log with metadata
+	// logEvents(3); //Grab data log with metadata //DEBUG!
 	fileSys.dumpFRAM(); //Backhaul this data right away
 	// Particle.publish("diagnostic", initDiagnostic);
 
@@ -287,7 +294,9 @@ void setup() {
 void loop() {
   // aux.sleep(false);
   static int count = 1; //Keep track of number of cycles
-
+	logger.wake(); //Wake up logger system
+	fileSys.wake(); //Wake up file handling 
+	wakeSensors(); //Wake each sensor
 	if(System.millis() > indicatorTimeout) {
 		logger.setIndicatorState(IndicatorLight::ALL, IndicatorMode::NONE); //Turn LED indicators off if it has been longer than timeout since startup (use system.millis() which does not rollover)
 		logger.enableI2C_OB(false);
@@ -299,14 +308,21 @@ void loop() {
 	bool alarm = logger.waitUntilTimerDone(); //Wait until the timer period has finished  //REPLACE FOR NON-SLEEP
 	// if(alarm) Serial.println("RTC Wakeup"); //DEBUG!
 	// else Serial.println("Timeout Wakeup"); //DEBUG!
-	if((count % 1) == 0) logEvents(1);
-	if((count % 5) == 0) logEvents(2);
+	// Serial.print("RAM, Start Log Events: "); //DEBUG!
+	// Serial.println(System.freeMemory()); //DEBUG!
 	if((count % 10) == 0) logEvents(3);
+	else if((count % 5) == 0) logEvents(2);
+	else if((count % 1) == 0) logEvents(1);
+	logger.startTimer(logPeriod); //Start timer as soon done reading sensors //REPLACE FOR NON-SLEEP
+	
+	// Serial.print("RAM, End Log Events: "); //DEBUG!
+	// Serial.println(System.freeMemory()); //DEBUG!
 	Serial.println("Log Done"); //DEBUG!
 	Serial.print("WDT Status: "); //DEBUG!
 	Serial.println(logger.feedWDT()); 
-	logger.startTimer(logPeriod); //Start timer as soon done reading sensors //REPLACE FOR NON-SLEEP
-
+	sleepSensors();
+	
+	
 	// Particle.publish("diagnostic", diagnostic);
 	// Particle.publish("error", errors);
 	// Particle.publish("data", data);
@@ -330,6 +346,8 @@ void loop() {
 		fileSys.dumpFRAM(); //dump FRAM every Nth log
 	}
 	count++;
+	fileSys.sleep(); //Wait to sleep until after backhaul attempt
+	logger.sleep(); //Put system into sleep mode
 
 	// SystemSleepConfiguration config;
 	// config.mode(SystemSleepMode::STOP)
@@ -821,6 +839,49 @@ void systemConfig()
 	}
 }
 
+int sleepSensors()
+{
+	if(powerSaveMode > PowerSaveModes::PERFROMANCE) { //Only turn off is power save requested 
+		Serial.println("BEGIN SENSOR SLEEP"); //DEBUG!
+		for(int s = 0; s < numSensors; s++) { //Iterate over all sensors objects
+			//If not set to keep power on and Talon is assocated, power down sensor. Ignore if core device, we will handle these seperately 
+			if(sensors[s]->keepPowered == false && sensors[s]->sensorInterface != BusType::CORE && sensors[s]->getTalonPort() > 0 && sensors[s]->getTalonPort() < numTalons) {
+				Serial.print("Sleep Sensor "); //DEBUG!
+				Serial.print(s + 1);
+				Serial.print(",");
+				Serial.println(sensors[s]->getTalonPort());
+				talons[sensors[s]->getTalonPort() - 1]->enablePower(sensors[s]->getSensorPort(), false); //Turn off power for any sensor which does not need to be kept powered
+			}
+			else {
+				sensors[s]->sleep(); //If not powered down, run sleep protocol 
+			}
+		}
+
+		for(int t = 0; t < Kestrel::numTalonPorts; t++) { //Iterate over all talon objects
+			if(talons[t]->keepPowered == false && talons[t]) { //If NO sensors on a given Talon require it to be kept powered, shut the whole thing down
+				Serial.print("Sleep Talon "); //DEBUG!
+				Serial.println(talons[t]->getTalonPort());
+				logger.enablePower(talons[t]->getTalonPort(), false); //Turn off power to given port 
+			}
+			else if(!talons[t]) {
+				Serial.print("Sleep Port "); //DEBUG!
+				Serial.println(t + 1);
+				logger.enablePower(t + 1, false); //Turn off power to unused port
+			}
+		}
+	}
+
+	return 0; //DEBUG!
+}
+
+int wakeSensors()
+{
+	for(int p = 1; p <= Kestrel::numTalonPorts; p++) logger.enablePower(p, true); //Turn power back on to all Kestrel ports
+	for(int t = 0; t < Kestrel::numTalonPorts; t++) if(talons[t]) talons[t]->restart(); //Restart all Talons, this turns on all ports it can
+	for(int s = 0; s < numSensors; s++) sensors[s]->wake(); //Wake each sensor
+	return 0; //DEBUG!
+}
+
 int detectTalons(String dummyStr)
 {
 		////////////// AUTO TALON DETECTION ///////////////////////
@@ -933,6 +994,7 @@ int detectSensors(String dummyStr)
 						if(sensors[s]->isPresent()) { //Test if that sensor is present, if it is, configure the port
 							sensors[s]->setTalonPort(t + 1);
 							sensors[s]->setSensorPort(p);
+							if(sensors[s]->keepPowered == true) talons[sensors[s]->getTalonPort() - 1]->keepPowered = true; //If any of the sensors on a Talon require power, set the flag for the Talon
 							Serial.print("Sensor Found:\n\t"); //DEBUG!
 							Serial.println(sensors[s]->getTalonPort());
 							Serial.print('\t');
@@ -967,7 +1029,11 @@ int setNodeID(String nodeID)
 
 int takeSample(String dummy)
 {
+	logger.wake(); //Wake logger in case it was sleeping
+	wakeSensors(); //Wake up sensors from sleep
 	fileSys.writeToParticle(getDataString(), "data"); 
+	sleepSensors(); //
+	logger.sleep();
 	return 1;
 }
 
@@ -976,4 +1042,17 @@ int systemRestart(String resetType)
 	if(resetType.equalsIgnoreCase("hard")) System.reset(RESET_NO_WAIT); //Perform a hard reset
 	else System.reset(); //Attempt to inform cloud of a reset first 
 	return 1;
+}
+
+int configurePowerSave(int desiredPowerSaveMode)
+{
+	powerSaveMode = desiredPowerSaveMode; //Configure global flag
+	for(int s = 0; s < numSensors; s++) { //Iterate over all sensors objects
+		sensors[s]->powerSaveMode = desiredPowerSaveMode; //Set power save mode for all sensors
+	}
+
+	for(int t = 0; t < numTalons; t++)  { //Iterate over all talon objects
+		talonsToTest[t]->powerSaveMode = desiredPowerSaveMode; //Set power save mode for all talons
+	}
+	return 0; //DEBUG!
 }

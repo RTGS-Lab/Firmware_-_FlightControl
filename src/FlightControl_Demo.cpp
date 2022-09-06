@@ -205,6 +205,7 @@ void setup() {
 		logger.setIndicatorState(IndicatorLight::STAT,IndicatorMode::ERROR); //Display error state if critical error is reported 
 	}
 	else logger.setIndicatorState(IndicatorLight::STAT,IndicatorMode::PASS); //If no critical fault, switch STAT off
+	battery.begin(0, hasCriticalError, hasError); //Init final CORE element
 	//   I2C_OnBoardEn(true); 	
 	// Wire.setClock(400000); //Confirm operation in fast mode
 	// Wire.begin();
@@ -216,8 +217,8 @@ void setup() {
 	// ioBeta.digitalWrite(PinsIOBeta::SEL2, LOW); //DEBUG
 	ioAlpha.pinMode(PinsIOAlpha::LED_EN, OUTPUT);
 	ioAlpha.digitalWrite(PinsIOAlpha::LED_EN, LOW); //Turn on LED indicators 
-	logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::IDLE);
-	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
+	// logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::IDLE);
+	// waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds
 	if(Serial.available()) {
 		//COMMAND MODE!
 		logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::COMMAND);
@@ -250,6 +251,8 @@ void setup() {
 	String initDiagnostic = initSensors();
 	Serial.print("DIAGNOSTIC: ");
 	Serial.println(initDiagnostic);
+	fileSys.writeToFRAM(initDiagnostic, DataType::Diagnostic, DestCodes::Both);
+	logEvents(4); //Grab data log with metadata, no diagnostics 
 	// fileSys.writeToParticle(initDiagnostic, "diagnostic"); 
 	// // logger.enableSD(true);
 	// fileSys.writeToSD(initDiagnostic, "Dummy.txt");
@@ -310,10 +313,11 @@ void loop() {
 	// else Serial.println("Timeout Wakeup"); //DEBUG!
 	// Serial.print("RAM, Start Log Events: "); //DEBUG!
 	// Serial.println(System.freeMemory()); //DEBUG!
+	logger.startTimer(logPeriod); //Start timer as soon done reading sensors //REPLACE FOR NON-SLEEP
 	if((count % 10) == 0) logEvents(3);
 	else if((count % 5) == 0) logEvents(2);
 	else if((count % 1) == 0) logEvents(1);
-	logger.startTimer(logPeriod); //Start timer as soon done reading sensors //REPLACE FOR NON-SLEEP
+	
 	
 	// Serial.print("RAM, End Log Events: "); //DEBUG!
 	// Serial.println(System.freeMemory()); //DEBUG!
@@ -370,7 +374,23 @@ void logEvents(uint8_t type)
 	data = "";
 	Serial.print("LOG: "); //DEBUG!
 	Serial.println(type); 
-	
+	if(type == 0) { //Grab errors only
+		// data = getDataString();
+		// diagnostic = getDiagnosticString(4); //DEBUG! RESTORE
+		errors = getErrorString(); //Get errors last to wait for error codes to be updated //DEBUG! RESTORE
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		Serial.println(errors); //DEBUG!
+		// Serial.println(data); //DEBUG!
+		// Serial.println(diagnostic); //DEBUG!
+
+		if(errors.equals("") == false) {
+			// Serial.println("Write Errors to FRAM"); //DEBUG!
+			fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+		}
+		// fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+	}
 	if(type == 1) {
 		data = getDataString();
 		diagnostic = getDiagnosticString(4); //DEBUG! RESTORE
@@ -408,6 +428,18 @@ void logEvents(uint8_t type)
 		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
 		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
 		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	}
+	else if(type == 4) { //To be used on startup, don't grab diagnostics since init already got them
+		data = getDataString();
+		// diagnostic = getDiagnosticString(2);
+		metadata = getMetadataString();
+		errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
 		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
 	}
 	// switch(type) {
@@ -499,8 +531,8 @@ String getDataString()
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
-		if(sensors[i]->sensorInterface != BusType::CORE) logger.enablePower(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon, only if not core system
-		if(sensors[i]->sensorInterface != BusType::CORE) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon
+		if(sensors[i]->sensorInterface != BusType::CORE && sensors[i]->getTalonPort() != 0) logger.enablePower(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon, only if not core system and port is valid
+		if(sensors[i]->sensorInterface != BusType::CORE && sensors[i]->getTalonPort() != 0) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon, only if not core system and port is valid
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		bool dummy1;
@@ -563,8 +595,8 @@ String getDiagnosticString(uint8_t level)
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
-		if(sensors[i]->sensorInterface != BusType::CORE) logger.enablePower(sensors[i]->getTalonPort(), true);
-		if(sensors[i]->sensorInterface != BusType::CORE) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
+		if(sensors[i]->sensorInterface != BusType::CORE && sensors[i]->getTalonPort() != 0) logger.enablePower(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon, only if not core system and port is valid
+		if(sensors[i]->sensorInterface != BusType::CORE && sensors[i]->getTalonPort() != 0) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on kestrel port for needed Talon, only if not core system and port is valid
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		// if(!sensors[i]->isTalon()) { //If sensor is not Talon
@@ -623,7 +655,7 @@ String getMetadataString()
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
-		if(sensors[i]->sensorInterface != BusType::CORE) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
+		if(sensors[i]->sensorInterface != BusType::CORE && sensors[i]->getTalonPort() != 0) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port only if not core and port is valid
 			// if(!sensors[i]->isTalon()) { //If sensor is not Talon
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
 			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data on Talon
@@ -663,18 +695,22 @@ String initSensors()
 {
 	String leader = "{\"Diagnostic\":{";
 	leader = leader + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	leader = leader + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosAlt() + "," + logger.getPosTimeString() + "],";
+	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
+	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Sensors\":["; //Concatonate number of sensors 
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Devices\":{"; //Concatonate number of sensors and level 
 	
-	String closer = "]}}";
+	String closer = "}}}";
 	String output = leader;
 	bool reportCriticalError = false; //Used to keep track of the global status of the error indications for all sensors
 	bool reportError = false;
 	bool missingSensor = false;
 	// output = output + "\"Devices\":[";
+	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
-		if(sensors[i]->sensorInterface != BusType::CORE) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port
+		if(sensors[i]->sensorInterface != BusType::CORE && sensors[i]->getTalonPort() != 0) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port only if not core and the port is valid
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		bool dummy1;
@@ -699,17 +735,22 @@ String initSensors()
 		bool hasCriticalError = false;
 		bool hasError = false;
 
-  		String initDiagnostic = sensors[i]->begin(logger.getTime(), hasCriticalError, hasError);
+  		String val;
+		if(sensors[i]->getTalonPort() > 0 && sensors[i]->getSensorPort() > 0) val = sensors[i]->begin(logger.getTime(), hasCriticalError, hasError); //If detected sensor, run begin
+		else if(sensors[i]->getTalonPort() > 0 && sensors[i]->getSensorPort() == 0 || sensors[i]->sensorInterface == BusType::CORE) val = sensors[i]->selfDiagnostic(2, logger.getTime()); //If sensor is a Talon or CORE type, run diagnostic, begin has already been run
 		if(hasError) reportError = true; //Set if any of them throw an error
 		if(hasCriticalError) reportCriticalError = true; //Set if any of them throw a critical error
-		if(output.length() - output.lastIndexOf('\n') + initDiagnostic.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
-			if(i > 0) output = output + ","; //Add preceeding comma if not the first entry
-			output = output + initDiagnostic; //Append result 
-			// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
-		}
-		else {
-			output = output + closer + "\n"; //End this packet
-			output = output + leader + initDiagnostic; //Start a new packet and add new payload 
+		if(!val.equals("")) {  //Only append if not empty string
+			if(output.length() - output.lastIndexOf('\n') + val.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
+				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
+				output = output + val; //Append result 
+				deviceCount++;
+				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
+			}
+			else {
+				output = output + closer + "\n"; //End this packet
+				output = output + leader + val; //Start a new packet and add new payload 
+			}
 		}
 		
 	}
@@ -720,7 +761,7 @@ String initSensors()
 	// else if(reportError) logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::ERROR); //Only set minimal error state if critical error is not thrown
 	// else logger.setIndicatorState(IndicatorLight::SENSORS, IndicatorMode::PASS); //If no errors are reported, set to pass state
 	
-	output = output + "]}}"; //Close diagnostic
+	output = output + closer; //Close diagnostic
 	return output;
 }
 
@@ -937,7 +978,7 @@ int detectTalons(String dummyStr)
 	// talons[i2c.getTalonPort() - 1] = &i2c;
 	bool dummy;
 	bool dummy1;
-	for(int i = 0; i < Kestrel::numTalonPorts; i++) {
+	for(int i = 0; i < Kestrel::numTalonPorts - 1; i++) {
 		if(talons[i] && talons[i]->getTalonPort() > 0) {
 			Serial.print("BEGIN TALON: "); //DEBUG!
 			Serial.print(talons[i]->getTalonPort()); 
@@ -957,11 +998,20 @@ int detectTalons(String dummyStr)
 			} 
 			
 			logger.configTalonSense(); //Setup to allow for current testing 
+			// Serial.println("TALON SENSE CONFIG DONE"); //DEBUG!
+			// Serial.flush(); //DEBUG!
 			// logger.enableI2C_Global(true);
 			// logger.enableI2C_OB(false);
 			// talons[i]->begin(Time.now(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //DEBUG!
 			talons[i]->begin(logger.getTime(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
+			// talons[i]->begin(0, dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
+			// Serial.println("TALON BEGIN DONE"); //DEBUG!
+			// Serial.flush(); //DEBUG!
+			// delay(10000); //DEBUG!
 			logger.enableData(i + 1, false); //Turn data back off to prevent conflict 
+			// Serial.println("ENABLE DATA DONE"); //DEBUG!
+			// Serial.flush(); //DEBUG!
+			// delay(10000); //DEBUG!
 		}
 	}
 	return 0; //DEBUG!
@@ -971,10 +1021,34 @@ int detectSensors(String dummyStr)
 {
 	/////////////// SENSOR AUTO DETECTION //////////////////////
 	for(int t = 0; t < Kestrel::numTalonPorts; t++) { //Iterate over each Talon
-	Serial.print("DETECT ON TALON: "); //DEBUG!
-	Serial.println(t);
+	// Serial.println(talons[t]->talonInterface); //DEBUG!
+	// Serial.print("DETECT ON TALON: "); //DEBUG!
+	// Serial.println(t);
+	// Serial.flush();
+	// if(talons[t]) {
+	// 	delay(5000);
+	// 	Serial.println("TALON EXISTS"); //DEBUG!
+	// 	Serial.flush();
+	// }
+	// else {
+	// 	delay(5000);
+	// 	Serial.println("TALON NOT EXISTS"); //DEBUG!
+	// 	Serial.flush();
+	// }
+	// delay(5000);
+	// if(talons[t]->talonInterface != BusType::NONE) {
+	// 	delay(5000);
+	// 	Serial.println("TALON NOT NONE"); //DEBUG!
+	// 	Serial.flush();
+	// }
+	// else {
+	// 	delay(5000);
+	// 	Serial.println("TALON NONE"); //DEBUG!
+	// 	Serial.flush();
+	// }
+	// delay(10000); //DEBUG!
 		// Serial.println(talons[t]->talonInterface); //DEBUG!
-		if(talons[t]->talonInterface != BusType::NONE && talons[t]) { //Only proceed if Talon has a bus which can be iterated over, and the talon in question exists
+		if(talons[t] && talons[t]->talonInterface != BusType::NONE && talons[t]->getTalonPort() != 0) { //Only proceed if Talon has a bus which can be iterated over, and the talon in question exists and has been detected 
 			logger.enableData(talons[t]->getTalonPort(), true); //Turn on specific channel
 			// logger.enableI2C_Global(true);
 			// logger.enableI2C_OB(false);
@@ -1014,6 +1088,8 @@ int detectSensors(String dummyStr)
 			}
 			logger.enableData(talons[t]->getTalonPort(), false); //Turn port back off
 		}
+		// Serial.print("NEXT TALON"); //DEBUG!
+		// Serial.flush();
 	}
 	return 0; //DEBUG!
 }

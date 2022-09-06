@@ -47,8 +47,8 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "B1.4.0";
-const String schemaVersion = "B1.2.0";
+const String firmwareVersion = "1.4.1";
+const String schemaVersion = "1.2.1";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 

@@ -1,5 +1,9 @@
 # FIRMWARE
 
+## v1.4.1
+### Improvements
+- Added SD free space reporting to lvl 3 diagnostic 
+
 ## v1.4.0
 ### Improvements 
 - Significantly increased startup speed
@@ -29,6 +33,9 @@
 - First deployed version
 
 # SCHEMA
+
+## v1.2.1
+- Added SD free space report to lvl 3 diagnostic 
 
 ## v1.2.0
 - Analog voltage from SDI-12 Talon reported in diagnostic

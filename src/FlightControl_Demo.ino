@@ -25,12 +25,12 @@
 #include <memory>
 
 const String firmwareVersion = "B2.0.0";
-const String schemaVersion = "1.1.1";
+const String schemaVersion = "1.2.1";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
-const unsigned long logPeriod = 300; //Wait 5 minutes between logs
+const unsigned long logPeriod = 60; //Wait 5 minutes between logs
 int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
 Kestrel logger;
@@ -51,7 +51,7 @@ SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports an
 TDR315H soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 
-const uint8_t numSensors = 9; 
+const uint8_t numSensors = 10; 
 const uint8_t numTalons = 3;
 String globalNodeID = ""; //Store current node ID
 
@@ -66,7 +66,7 @@ Sensor* const sensors[numSensors] = {
 	&logger,
 	&sdi12,
 	&battery,
-	// &apogeeO2,
+	&apogeeO2,
 	&soil,
 	&apogeeSolar
 };
@@ -221,7 +221,7 @@ void setup() {
 	// logger.enableI2C_OB(false);
 	// logger.enableI2C_Global(true);
 	// String initDiagnostic = aux.begin(Time.now(), hasCriticalError, hasError);
-
+	logger.updateLocation(true); //Force GPS update (hopfully connected)
 	String initDiagnostic = initSensors();
 	Serial.print("DIAGNOSTIC: ");
 	Serial.println(initDiagnostic);
@@ -861,25 +861,37 @@ int sleepSensors()
 		for(int s = 0; s < numSensors; s++) { //Iterate over all sensors objects
 			//If not set to keep power on and Talon is assocated, power down sensor. Ignore if core device, we will handle these seperately 
 			if(sensors[s]->keepPowered == false && sensors[s]->sensorInterface != BusType::CORE && sensors[s]->getTalonPort() > 0 && sensors[s]->getTalonPort() < numTalons) {
-				Serial.print("Sleep Sensor "); //DEBUG!
+				Serial.print("Power Down Sensor "); //DEBUG!
 				Serial.print(s + 1);
 				Serial.print(",");
 				Serial.println(sensors[s]->getTalonPort());
 				talons[sensors[s]->getTalonPort() - 1]->enablePower(sensors[s]->getSensorPort(), false); //Turn off power for any sensor which does not need to be kept powered
 			}
-			else {
+			else if(sensors[s]->sensorInterface != BusType::CORE && sensors[s]->getTalonPort() > 0 && sensors[s]->getTalonPort() < numTalons){ //If sensor has a position and is not core, but keepPowered is true, run sleep routine
+				Serial.print("Sleep Sensor "); //DEBUG!
+				Serial.println(s + 1);
 				sensors[s]->sleep(); //If not powered down, run sleep protocol 
+			}
+			else if(sensors[s]->sensorInterface == BusType::CORE) {
+				Serial.print("Sensor "); //DEBUG!
+				Serial.print(s + 1);
+				Serial.println(" is core, do nothing"); 
+			}
+			else {
+				Serial.print("Sensor "); //DEBUG!
+				Serial.print(s + 1);
+				Serial.println(" not detected, do nothing"); 
 			}
 		}
 
 		for(int t = 0; t < Kestrel::numTalonPorts; t++) { //Iterate over all talon objects
-			if(talons[t]->keepPowered == false && talons[t]) { //If NO sensors on a given Talon require it to be kept powered, shut the whole thing down
-				Serial.print("Sleep Talon "); //DEBUG!
+			if(talons[t] && talons[t]->keepPowered == false) { //If NO sensors on a given Talon require it to be kept powered, shut the whole thing down
+				Serial.print("Power Down Talon "); //DEBUG!
 				Serial.println(talons[t]->getTalonPort());
 				logger.enablePower(talons[t]->getTalonPort(), false); //Turn off power to given port 
 			}
 			else if(!talons[t]) {
-				Serial.print("Sleep Port "); //DEBUG!
+				Serial.print("Power Down Empty Port "); //DEBUG!
 				Serial.println(t + 1);
 				logger.enablePower(t + 1, false); //Turn off power to unused port
 			}
@@ -891,9 +903,24 @@ int sleepSensors()
 
 int wakeSensors()
 {
+	logger.enableI2C_Global(true); //Connect to external bus to talk to sensors/Talons
+	logger.enableI2C_OB(false);
+	logger.disableDataAll(); //Turn off all data to start
 	for(int p = 1; p <= Kestrel::numTalonPorts; p++) logger.enablePower(p, true); //Turn power back on to all Kestrel ports
-	for(int t = 0; t < Kestrel::numTalonPorts; t++) if(talons[t]) talons[t]->restart(); //Restart all Talons, this turns on all ports it can
-	for(int s = 0; s < numSensors; s++) sensors[s]->wake(); //Wake each sensor
+	for(int t = 0; t < Kestrel::numTalonPorts; t++) {
+		if(talons[t] && talons[t]->getTalonPort() != 0) {
+			logger.enableData(talons[t]->getTalonPort(), true); //Turn on data for given port
+			talons[t]->restart(); //Restart all Talons, this turns on all ports it can
+			logger.enableData(talons[t]->getTalonPort(), false); //Turn data back off for given port
+		}
+	}
+	for(int s = 0; s < numSensors; s++) {
+		if(sensors[s]->getTalonPort() != 0) {
+			logger.enableData(sensors[s]->getTalonPort(), true); //Turn on data for given port
+			sensors[s]->wake(); //Wake each sensor
+			logger.enableData(sensors[s]->getTalonPort(), false); //Turn data back off for given port
+		}
+	}
 	return 0; //DEBUG!
 }
 
@@ -909,6 +936,7 @@ int detectTalons(String dummyStr)
 	// for(int i = 0; i < numTalons; i++) { //Initialize all Talons //DEBUG!
 	// 	talons[i]->begin(Time.now(), hasCriticalError, hasError);
 	// }
+	// logger.enableI2C_External(false); //Turn off connection to 
 	logger.enableI2C_Global(true); //Connect to external bus to talk to sensors/Talons
 	logger.enableI2C_OB(false);
 	for(int port = 1; port <= Kestrel::numTalonPorts; port++) { //Test all ports

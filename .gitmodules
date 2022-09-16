@@ -70,3 +70,6 @@
 [submodule "lib/Driver_-_TDR315H"]
 	path = lib/Driver_-_TDR315H
 	url = https://github.com/gemsiot/Driver_-_TDR315H.git
+[submodule "lib/SparkFun_SCD30_Arduino_Library"]
+	path = lib/SparkFun_SCD30_Arduino_Library
+	url = https://github.com/sparkfun/SparkFun_SCD30_Arduino_Library.git

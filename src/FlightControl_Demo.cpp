@@ -47,13 +47,13 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.4.1";
-const String schemaVersion = "1.2.1";
+const String firmwareVersion = "B1.5.0";
+const String schemaVersion = "B1.2.2";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
-const unsigned long logPeriod = 300; //Wait 60 seconds between logs
+const unsigned long logPeriod = 30; //Wait 60 seconds between logs
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);
@@ -148,8 +148,9 @@ namespace PinsIOBeta { //For Kestrel v1.1
 
 // SYSTEM_MODE(MANUAL);
 SYSTEM_MODE(SEMI_AUTOMATIC);
-// SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
-SYSTEM_THREAD(DISABLED); 
+// SYSTEM_MODE(AUTOMATIC); //DEBUG!
+SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
+// SYSTEM_THREAD(DISABLED); 
 // SYSTEM_MODE(AUTOMATIC);
 int detectTalons(String dummyStr = "");
 int detectSensors(String dummyStr = "");
@@ -261,12 +262,16 @@ void setup() {
 				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PREPASS); //If time is good, set preliminary pass only
 			}
 		}
+		Serial.println("Wait for cell connect..."); //DEBUG!
 		delay(5000); //Wait 5 seconds between each check to not lock up the process //DEBUG!
 	}
 	#endif
 	
 	if(Particle.connected()) logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //Catches connection of cell is second device to connect
-	else logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::ERROR); //If cell still not connected, display error
+	else {
+		logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::ERROR); //If cell still not connected, display error
+		// Particle.disconnect(); //DEBUG!
+	}
 	if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //Make fix report is in range and fix is OK
 		logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); //Catches connection of GPS is second device to connect
 	}

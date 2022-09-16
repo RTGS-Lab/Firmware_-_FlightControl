@@ -1,5 +1,15 @@
 # FIRMWARE
 
+## v1.5.0
+### Bug Fixes
+- Dealt with cell reconnect lockup 
+	- Enabled threading 
+- Fixed backhaul for retry packets
+- Fixed SD unsent log dump to eliminate garbage 
+
+### Improvements
+- Added basic support for Hedorah CO2 sensor 
+
 ## v1.4.1
 ### Improvements
 - Added SD free space reporting to lvl 3 diagnostic 

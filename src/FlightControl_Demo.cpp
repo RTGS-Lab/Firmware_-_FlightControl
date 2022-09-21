@@ -37,6 +37,7 @@ int systemRestart(String resetType);
 #include <Kestrel.h>
 #include <KestrelFileHandler.h>
 #include <Haar.h>
+#include <Hedorah.h>
 #include <SO421.h>
 #include <SP421.h>
 #include <TEROS11.h>
@@ -47,8 +48,8 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "B1.5.0";
-const String schemaVersion = "B1.2.2";
+const String firmwareVersion = "1.5.1";
+const String schemaVersion = "1.2.3";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
@@ -430,10 +431,28 @@ void logEvents(uint8_t type)
 		errors = getErrorString();
 		// logger.enableI2C_OB(true);
 		// logger.enableI2C_Global(false);
+		Serial.println(errors); //DEBUG!
+		Serial.println(data); //DEBUG
+		Serial.println(metadata); //DEBUG!
 		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
 		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
 		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
 		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	}
+	else if(type == 5) { //To be used on startup, don't grab diagnostics since init already got them
+		data = getDataString();
+		diagnostic = getDiagnosticString(5);
+		// metadata = getMetadataString();
+		errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		Serial.println(errors); //DEBUG!
+		Serial.println(data); //DEBUG
+		// Serial.println(metadata); //DEBUG!
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::SD); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, DestCodes::SD);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
+		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
 	}
 	// switch(type) {
 	// 	case 1: //Standard, short interval, log

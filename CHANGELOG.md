@@ -1,5 +1,18 @@
 # FIRMWARE
 
+## v1.5.1
+### Improvements
+- Added separate error code reporting for sensors if disconnected after init
+	- If disconnected after init, sensor will report nulls but correct port, will throw `DETECT_FAIL` error code
+	- Added on following sensors:
+		- SP421
+		- TDR315
+### Features
+- Added type 5 log
+	- Logs only most basic diagnostics, data, and errors
+	- Logs only to SD
+	- Meant for use as an indoor benchtop logger
+
 ## v1.5.0
 ### Bug Fixes
 - Dealt with cell reconnect lockup 
@@ -43,6 +56,9 @@
 - First deployed version
 
 # SCHEMA
+
+## v1.2.2
+- Added Hedorah to sensor list
 
 ## v1.2.1
 - Added SD free space report to lvl 3 diagnostic 

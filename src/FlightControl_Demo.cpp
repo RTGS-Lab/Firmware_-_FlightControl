@@ -48,8 +48,8 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.5.1";
-const String schemaVersion = "1.2.3";
+const String firmwareVersion = "1.5.3";
+const String schemaVersion = "1.2.4";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
@@ -343,6 +343,7 @@ void loop() {
 
 	if((count % backhaulCount) == 0) {
 		Serial.println("BACKHAUL"); //DEBUG!
+		logger.syncTime();
 		fileSys.dumpFRAM(); //dump FRAM every Nth log
 	}
 	count++;

@@ -1,4 +1,14 @@
 # FIRMWARE
+## v1.5.3
+### Features
+- Added forced timesync calls during backhaul events
+
+## v1.5.2
+### Features
+- Added reporting of RTC config registers
+	- Reported by Kestrel lvl 3 diagnostic 
+- Added error reporting for failure of RTC wake
+	- If RTC fails to wake the device from sleep an ALARM_FAIL error is thrown 
 
 ## v1.5.1
 ### Improvements
@@ -56,6 +66,8 @@
 - First deployed version
 
 # SCHEMA
+## v1.2.3
+- Added RTC config diagnostic reporting 
 
 ## v1.2.2
 - Added Hedorah to sensor list

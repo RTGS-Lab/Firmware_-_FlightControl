@@ -40,6 +40,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <Kestrel.h>
 #include <KestrelFileHandler.h>
 #include <Haar.h>
+#include <Hedorah.h>
 #include <SO421.h>
 #include <SP421.h>
 #include <TEROS11.h>
@@ -154,8 +155,9 @@ namespace PinsIOBeta { //For Kestrel v1.1
 
 // SYSTEM_MODE(MANUAL);
 SYSTEM_MODE(SEMI_AUTOMATIC);
-// SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
-SYSTEM_THREAD(DISABLED); 
+// SYSTEM_MODE(AUTOMATIC); //DEBUG!
+SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
+// SYSTEM_THREAD(DISABLED); 
 // SYSTEM_MODE(AUTOMATIC);
 int detectTalons(String dummyStr = "");
 int detectSensors(String dummyStr = "");
@@ -268,12 +270,16 @@ void setup() {
 				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PREPASS); //If time is good, set preliminary pass only
 			}
 		}
+		Serial.println("Wait for cell connect..."); //DEBUG!
 		delay(5000); //Wait 5 seconds between each check to not lock up the process //DEBUG!
 	}
 	#endif
 	
 	if(Particle.connected()) logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //Catches connection of cell is second device to connect
-	else logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::ERROR); //If cell still not connected, display error
+	else {
+		logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::ERROR); //If cell still not connected, display error
+		// Particle.disconnect(); //DEBUG!
+	}
 	if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //Make fix report is in range and fix is OK
 		logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); //Catches connection of GPS is second device to connect
 	}
@@ -347,6 +353,7 @@ void loop() {
 
 	if((count % backhaulCount) == 0) {
 		Serial.println("BACKHAUL"); //DEBUG!
+		logger.syncTime();
 		fileSys.dumpFRAM(); //dump FRAM every Nth log
 	}
 	count++;
@@ -437,10 +444,28 @@ void logEvents(uint8_t type)
 		errors = getErrorString();
 		// logger.enableI2C_OB(true);
 		// logger.enableI2C_Global(false);
+		Serial.println(errors); //DEBUG!
+		Serial.println(data); //DEBUG
+		Serial.println(metadata); //DEBUG!
 		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
 		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
 		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
 		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	}
+	else if(type == 5) { //To be used on startup, don't grab diagnostics since init already got them
+		data = getDataString();
+		diagnostic = getDiagnosticString(5);
+		// metadata = getMetadataString();
+		errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		Serial.println(errors); //DEBUG!
+		Serial.println(data); //DEBUG
+		// Serial.println(metadata); //DEBUG!
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::SD); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, DestCodes::SD);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
+		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
 	}
 	// switch(type) {
 	// 	case 1: //Standard, short interval, log

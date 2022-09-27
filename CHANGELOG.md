@@ -1,4 +1,37 @@
 # FIRMWARE
+## v1.5.3
+### Features
+- Added forced timesync calls during backhaul events
+
+## v1.5.2
+### Features
+- Added reporting of RTC config registers
+	- Reported by Kestrel lvl 3 diagnostic 
+- Added error reporting for failure of RTC wake
+	- If RTC fails to wake the device from sleep an ALARM_FAIL error is thrown 
+
+## v1.5.1
+### Improvements
+- Added separate error code reporting for sensors if disconnected after init
+	- If disconnected after init, sensor will report nulls but correct port, will throw `DETECT_FAIL` error code
+	- Added on following sensors:
+		- SP421
+		- TDR315
+### Features
+- Added type 5 log
+	- Logs only most basic diagnostics, data, and errors
+	- Logs only to SD
+	- Meant for use as an indoor benchtop logger
+
+## v1.5.0
+### Bug Fixes
+- Dealt with cell reconnect lockup 
+	- Enabled threading 
+- Fixed backhaul for retry packets
+- Fixed SD unsent log dump to eliminate garbage 
+
+### Improvements
+- Added basic support for Hedorah CO2 sensor 
 
 ## v1.4.1
 ### Improvements
@@ -33,6 +66,11 @@
 - First deployed version
 
 # SCHEMA
+## v1.2.3
+- Added RTC config diagnostic reporting 
+
+## v1.2.2
+- Added Hedorah to sensor list
 
 ## v1.2.1
 - Added SD free space report to lvl 3 diagnostic 

@@ -25,7 +25,7 @@
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.5.3";
+const String firmwareVersion = "1.6.0";
 const String schemaVersion = "1.2.4";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 

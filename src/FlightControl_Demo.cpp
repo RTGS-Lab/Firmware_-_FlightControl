@@ -48,7 +48,7 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.6.0";
+const String firmwareVersion = "1.7.0";
 const String schemaVersion = "1.2.4";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
@@ -311,7 +311,10 @@ void loop() {
 	// Serial.print("RAM, Start Log Events: "); //DEBUG!
 	// Serial.println(System.freeMemory()); //DEBUG!
 	logger.startTimer(logPeriod); //Start timer as soon done reading sensors //REPLACE FOR NON-SLEEP
-	if((count % 10) == 0) logEvents(3);
+	if((count % 10) == 0) {
+		logger.syncTime(true); //Perform a forced time sync every 10th event
+		logEvents(3);
+	}
 	else if((count % 5) == 0) logEvents(2);
 	else if((count % 1) == 0) logEvents(1);
 	

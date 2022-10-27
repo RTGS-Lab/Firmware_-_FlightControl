@@ -1,4 +1,15 @@
 # FIRMWARE
+## v1.6.0
+### Improvements
+- Added SDI-12 retry w/CRC on TDR315 and SP421
+	- Attempt 3 retry
+	- If there is no valid read after 3 tries, throw SDI12_READ_FAIL for sensor
+	- Otherwise throw SDI12_COM_FAIL even if just a single error occurs
+	- Checks for CRC match, error characters in ACK, etc
+### Features
+- TDR315 now compatible with TDR315 and TDR310
+
+
 ## v1.5.3
 ### Features
 - Added forced timesync calls during backhaul events

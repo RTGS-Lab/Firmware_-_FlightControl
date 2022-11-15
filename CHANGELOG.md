@@ -1,5 +1,9 @@
 # FIRMWARE
 
+## v2.3.1
+### Features
+- Added auto accel Z level on startup (if level within +/- 2.5 degrees)
+
 ## v2.3.0
 ### Improvements
 - Added forced cell connect time for low power logging modes

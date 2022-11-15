@@ -1,4 +1,25 @@
 # FIRMWARE
+
+## v2.3.0
+### Improvements
+- Added forced cell connect time for low power logging modes
+- Added GPS support for LOW_POWER mode
+
+## v2.1.3
+### Features 
+- All of v2.x.y low power dev
+- Report TIME_DISAGREE if any time source is out of sync
+- Reports more registers from RTC in diagnostic
+- Changed publish events to /v2 e.g. "data/v2" to be in lock step with schema v2.x.y update
+### Improvements 
+- Reports different error code subtype if fail is on a first try or a retry 
+### Bug Fixes
+- Changed way FAIL_FIND is reported on SDI-12 devices 
+	Reports FAIL_FIND only if sensor is not detected, instead of also an SDI-12 fail
+- Fix GPS error reporting to be consistent visa-vi GPS_INIT_FAIL vs GPS_READ_FAIL
+- Fixed time sync lockup 
+- Fixed mislabeling of RTC register in diagnostic report 
+
 ## v1.5.3
 ### Features
 - Added forced timesync calls during backhaul events
@@ -66,6 +87,18 @@
 - First deployed version
 
 # SCHEMA
+## v2.1.3
+- Added reporting of log period, backhaul count, power save mode
+
+## v2.1.2
+- Changed 'Time Sync' to 'Time Fix'
+- Changed CLOCK_NO_SYNC from 0x500103F0 to 0x500300F0
+
+## v2.1.1
+- Reports time fix value
+- Changed wrapping structure to be compliant with duplicates in DEVICES blob - v2.x.y change
+- Reports via "/v2" events 
+
 ## v1.2.3
 - Added RTC config diagnostic reporting 
 

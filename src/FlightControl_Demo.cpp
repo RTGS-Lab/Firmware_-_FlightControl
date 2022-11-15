@@ -51,8 +51,8 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "B2.1.1";
-const String schemaVersion = "1.2.1";
+const String firmwareVersion = "2.3.0";
+const String schemaVersion = "2.1.3";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
@@ -86,10 +86,10 @@ Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible l
 Sensor* const sensors[numSensors] = {
 	&fileSys,
 	&aux,
-	// &aux1,
+	&aux1,
 	&i2c,
 	&haar,
-	// &haar1, 
+	&haar1, 
 	&logger,
 	&sdi12,
 	&battery,
@@ -353,6 +353,10 @@ void loop() {
 
 	if((count % backhaulCount) == 0) {
 		Serial.println("BACKHAUL"); //DEBUG!
+		if(powerSaveMode >= PowerSaveModes::LOW_POWER) {
+			Particle.connect();
+			waitFor(Particle.connected, 300000); //Wait up to 5 minutes to connect if using low power modes
+		}
 		logger.syncTime();
 		fileSys.dumpFRAM(); //dump FRAM every Nth log
 	}
@@ -528,15 +532,15 @@ String getErrorString()
 	else errors = errors + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	errors = errors + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	errors = errors + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	errors = errors + "\"Devices\":{";
+	errors = errors + "\"Devices\":[";
 	for(int i = 0; i < numSensors; i++) {
 		if(sensors[i]->totalErrors() > 0) {
 			numErrors = numErrors + sensors[i]->totalErrors(); //Increment the total error count
-			if(!errors.endsWith("{")) errors = errors + ","; //Only append if not first entry
-			errors = errors + sensors[i]->getErrors();
+			if(!errors.endsWith("[")) errors = errors + ","; //Only append if not first entry
+			errors = errors + "{" + sensors[i]->getErrors() + "}";
 		}
 	}
-	errors = errors + "}}}"; //Close data
+	errors = errors + "]}}"; //Close data
 	Serial.print("Num Errors: "); //DEBUG!
 	Serial.println(numErrors); 
 	if(numErrors > 0) return errors;
@@ -552,7 +556,7 @@ String getDataString()
 	else data = data + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	data = data + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	data = data + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	data = data + "\"Devices\":{";
+	data = data + "\"Devices\":[";
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
@@ -587,13 +591,19 @@ String getDataString()
 		// delay(100); //DEBUG!
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
+		Serial.print("Data string from sensor "); //DEBUG!
+		Serial.print(i);
+		Serial.print(": ");
 		String val = sensors[i]->getData(logger.getTime());
+		Serial.println(val);
 		if(!val.equals("")) { //Only append if real result
 			if(deviceCount > 0) data = data + ","; //Preappend comma only if not first addition
-			data = data + val;
+			data = data + "{" + val + "}";
 			deviceCount++;
 			// if(i + 1 < numSensors) metadata = metadata + ","; //Only append if not last entry
 		}
+		Serial.print("Cumulative data string: "); //DEBUG!
+		Serial.println(data); //DEBUG!
 		// data = data + sensors[i]->getData(logger.getTime()); //DEBUG! REPLACE!
 		// if(i + 1 < numSensors) data = data + ","; //Only append if not last entry
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {
@@ -601,7 +611,7 @@ String getDataString()
 			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), false); //Turn off power for the given port on the Talon //DEBUG!
 		}
 	}
-	data = data + "}}}"; //Close data
+	data = data + "]}}"; //Close data
 	return data;
 }
 
@@ -613,8 +623,8 @@ String getDiagnosticString(uint8_t level)
 	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Devices\":{"; //Concatonate number of sensors and level 
-	const String closer = "}}}";
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Devices\":["; //Concatonate number of sensors and level 
+	const String closer = "]}}";
 	String output = leader;
 
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
@@ -636,13 +646,13 @@ String getDiagnosticString(uint8_t level)
 		if(!diagnostic.equals("")) {  //Only append if not empty string
 			if(output.length() - output.lastIndexOf('\n') + diagnostic.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
 				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
-				output = output + diagnostic; //Append result 
+				output = output + "{" + diagnostic + "}"; //Append result 
 				deviceCount++;
 				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
 			}
 			else {
 				output = output + closer + "\n"; //End this packet
-				output = output + leader + diagnostic; //Start a new packet and add new payload 
+				output = output + leader + "{" + diagnostic + "}"; //Start a new packet and add new payload 
 			}
 		}
 
@@ -665,16 +675,19 @@ String getMetadataString()
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	leader = leader + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	leader = leader + "\"Devices\":{";
-	const String closer = "}}}";
+	leader = leader + "\"Devices\":[";
+	const String closer = "]}}";
 	String output = leader;
 	
-	output = output + "\"System\":{";
+	output = output + "{\"System\":{";
 	// output = output + "\"DUMMY\":\"BLOODYMARYBLOODYMARYBLODDYMARY\",";
 	output = output + "\"Schema\":\"" + schemaVersion + "\",";
 	output = output + "\"Firm\":\"" + firmwareVersion + "\",";
 	output = output + "\"OS\":\"" + System.version() + "\",";
-	output = output + "\"ID\":\"" + System.deviceID() + "\"},";
+	output = output + "\"ID\":\"" + System.deviceID() + "\",";
+	output = output + "\"Update\":" + String(logPeriod) + ",";
+	output = output + "\"Backhaul\":" + String(backhaulCount) + ",";
+	output = output + "\"Sleep\":" + String(powerSaveMode) + "}},";
 	//FIX! Add support for device name 
 	
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
@@ -701,13 +714,13 @@ String getMetadataString()
 		if(!val.equals("")) {  //Only append if not empty string
 			if(output.length() - output.lastIndexOf('\n') + val.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
 				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
-				output = output + val; //Append result 
+				output = output + "{" + val + "}"; //Append result 
 				deviceCount++;
 				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
 			}
 			else {
 				output = output + closer + "\n"; //End this packet
-				output = output + leader + val; //Start a new packet and add new payload 
+				output = output + leader + "{" + val + "}"; //Start a new packet and add new payload 
 			}
 		}
 	}
@@ -724,9 +737,9 @@ String initSensors()
 	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Devices\":{"; //Concatonate number of sensors and level 
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Devices\":["; //Concatonate number of sensors and level 
 	
-	String closer = "}}}";
+	String closer = "]}}";
 	String output = leader;
 	bool reportCriticalError = false; //Used to keep track of the global status of the error indications for all sensors
 	bool reportError = false;
@@ -768,13 +781,13 @@ String initSensors()
 		if(!val.equals("")) {  //Only append if not empty string
 			if(output.length() - output.lastIndexOf('\n') + val.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
 				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
-				output = output + val; //Append result 
+				output = output + "{" + val + "}"; //Append result 
 				deviceCount++;
 				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
 			}
 			else {
 				output = output + closer + "\n"; //End this packet
-				output = output + leader + val; //Start a new packet and add new payload 
+				output = output + leader + "{" + val + "}"; //Start a new packet and add new payload 
 			}
 		}
 		

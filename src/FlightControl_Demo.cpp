@@ -51,12 +51,12 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.3.3";
-const String schemaVersion = "2.1.3";
+const String firmwareVersion = "2.3.4";
+const String schemaVersion = "2.1.4";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
-const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
+const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
 const unsigned long logPeriod = 60; //Wait 5 minutes between logs
 int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
@@ -1173,7 +1173,7 @@ int takeSample(String dummy)
 {
 	logger.wake(); //Wake logger in case it was sleeping
 	wakeSensors(); //Wake up sensors from sleep
-	fileSys.writeToParticle(getDataString(), "data"); 
+	fileSys.writeToParticle(getDataString(), "data/v2"); 
 	sleepSensors(); //
 	logger.sleep();
 	return 1;

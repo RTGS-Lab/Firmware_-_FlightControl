@@ -1,5 +1,33 @@
 # FIRMWARE
 
+## v2.3.6
+### Bug Fixes
+- Made sleep keep alive/reconnect only performed in `LOW_POWER` mode
+### Patches
+- Clear RTC trim register on begin - assume erroniously set
+
+## v2.3.5
+### Improvements
+- Added reading error reporting for Hedorah
+- Added more detail to GPS error reporting 
+- Added wake time support for sensor class
+### Bug Fixes
+- Fixed 0 CO2 readings for Hedorah by adding catch/timeout 
+
+## v2.3.4
+### Features
+- Low power mode now supports sleep times greater than 23 minutes 
+### Bug Fixes
+- Fixed SDI-12 negative number bug (for SO241 and TDR315H)
+- Fixed `takeSample` call to return event type `data/v2` instead of `data`
+- Fixed battery light staying on after first log 
+- Fixed 'wake up' after first log
+
+
+## v2.3.2
+### Patches
+- When RTC enables alarm, it clears the square wave enable bit in case it has been erroniously set (which was happening) and prevents alarm pin from immediately going off
+
 ## v2.3.1
 ### Features
 - Added auto accel Z level on startup (if level within +/- 2.5 degrees)
@@ -91,6 +119,10 @@
 - First deployed version
 
 # SCHEMA
+
+## v2.1.4
+- Changed `takeSample` to report event type `data/v2` instead of `data`
+
 ## v2.1.3
 - Added reporting of log period, backhaul count, power save mode
 

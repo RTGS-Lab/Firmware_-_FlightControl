@@ -51,7 +51,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.3.6";
+const String firmwareVersion = "2.3.7";
 const String schemaVersion = "2.1.4";
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 

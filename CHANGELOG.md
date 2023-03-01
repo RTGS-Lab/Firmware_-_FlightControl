@@ -1,4 +1,7 @@
 # FIRMWARE
+## v2.3.7
+### Patches
+- Added serial init to Kestrel to prevent sleep problems when not using SDI-12 Talon
 
 ## v2.3.6
 ### Bug Fixes

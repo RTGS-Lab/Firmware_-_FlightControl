@@ -51,73 +51,64 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.5.0";
+const String firmwareVersion = "2.5.1";
 const String schemaVersion = "2.1.4";
 
-const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
-const unsigned long logPeriod = 60; //Wait 5 minutes between logs
 int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
 Kestrel logger;
 KestrelFileHandler fileSys(logger);
+Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
-AuxTalon aux1(0, 0x14); //Instantiate AUX talon with alt - null port and hardware v1.4
 I2CTalon i2c(0, 0x21); //Instantiate I2C talon with alt - null port and hardware v2.1
 SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and hardware v1.4
 PCAL9535A ioAlpha(0x20);
 PCAL9535A ioBeta(0x21);
-Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
-// SP421 apogeeSolar(sdi12, 0, 4); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface //DEBUG!
-// TEROS11 soil(sdi12, 0, 1); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface //DEBUG!
-SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface 
-// TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-TDR315H soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 
-const uint8_t numSensors = 10; 
-const uint8_t numTalons = 3;
 String globalNodeID = ""; //Store current node ID
 
-Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
-Sensor* const sensors[numSensors] = {
-	&fileSys,
-	&aux,
-	&aux1,
-	&i2c,
-	&haar,
-	&haar1, 
-	&logger,
-	&sdi12,
-	&battery,
-	&apogeeO2,
-	&soil,
-	&apogeeSolar
-};
+const uint8_t numTalons = 3; //Number must match the number of objects defined in `talonsToTest` array
 
+Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
 Talon* talonsToTest[numTalons] = {
 	&aux,
-	// &aux1,
 	&i2c,
 	&sdi12
 };
 
-// namespace Pins { //Use for B402
-// 	constexpr uint16_t WD_HOLD  = D2;
-// 	constexpr uint16_t SD_CS    = D8;
-// 	constexpr uint16_t Clock_INT 	= D22;
-// 	constexpr uint16_t TALON1_GPIOA = A3;
-// 	constexpr uint16_t TALON1_GPIOB = D7;
-// 	constexpr uint16_t TALON2_GPIOA = A2;
-// 	constexpr uint16_t TALON2_GPIOB = D6;
-// 	constexpr uint16_t TALON3_GPIOA = A1;
-// 	constexpr uint16_t TALON3_GPIOB = D5;
-// 	constexpr uint16_t I2C_GLOBAL_EN = D23; //FIX!
-// 	constexpr uint16_t I2C_OB_EN = A6; //FIX!
-// }
+/////////////////////////// BEGIN USER CONFIG ////////////////////////
+PRODUCT_ID(15820) //Configured based on the target product, comment out if device has no product
+PRODUCT_VERSION(1) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
+
+const int backhaulCount = 3; //Number of log events before backhaul is performed 
+const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
+int desiredPowerSaveMode = PowerSaveModes::BALANCED; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
+
+Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
+// Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
+// Haar haar2(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
+// SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
+// SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// TDR315H soil1(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// TDR315H soil2(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
+
+const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
+
+Sensor* const sensors[numSensors] = {
+	&fileSys,
+	&aux,
+	&i2c,
+	&sdi12,
+	&battery,
+	&logger, //Add sensors after this line
+	&haar,
+};
+/////////////////////////// END USER CONFIG /////////////////////////////////
 
 namespace PinsIO { //For Kestrel v1.1
 	constexpr uint16_t VUSB = 5;
@@ -168,10 +159,7 @@ String metadata = "";
 String data = "";
 
 void setup() {
-	// System.disableReset(); //DEBUG!
-	// RESET_REASON_PIN_RESET
-	// RESET_REASON_POWER_DOWN
-	configurePowerSave(PowerSaveModes::BALANCED); //Setup power mode of the system
+	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system
 	System.enableFeature(FEATURE_RESET_INFO); //DEBUG!
 	if(System.resetReason() != RESET_REASON_POWER_DOWN) {
 		//DEBUG! Set safe mode 

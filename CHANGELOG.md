@@ -1,4 +1,29 @@
 # FIRMWARE
+## v2.6.0
+### Improvments
+- Reduced SD read/write speed to try to prevent corruption
+- Added error reporting for Talon power init 
+- Added CSA detect error report
+- Added FRAM power down to `ULTRA_LOW_POWER` sleep mode
+### Bug Fixes
+- Fixed JSON bug for case where CSA fails to detect 
+
+## v2.5.2
+### Improvements
+- Added fixes to default reading type of MCP3421. No longer waits fixed interval 
+
+## v2.5.1
+### Improvements
+- Updated layout of user configured elements in code to make configuration easier 
+
+## v2.5.0
+### Bug Fixes
+- Fixed automatic gain control for small signal analog read from Aux Talon
+
+## v2.4.0
+### Features
+- Added support for `ULTRA_LOW_POWER` sleep mode
+
 ## v2.3.7
 ### Patches
 - Added serial init to Kestrel to prevent sleep problems when not using SDI-12 Talon

@@ -51,8 +51,8 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.6.0";
-const String schemaVersion = "2.1.4";
+const String firmwareVersion = "2.7.0";
+const String schemaVersion = "2.2.0";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
@@ -537,14 +537,17 @@ String getErrorString()
 
 String getDataString()
 {
-	String data = "{\"Data\":{";
-	data = data + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
-	data = data + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosAlt() + "," + logger.getPosTimeString() + "],";
-	if(globalNodeID != "") data = data + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
-	else data = data + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
-	data = data + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	data = data + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	data = data + "\"Devices\":[";
+	String leader = "{\"Data\":{";
+	leader = leader + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	leader = leader + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosAlt() + "," + logger.getPosTimeString() + "],";
+	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
+	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
+	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
+	leader = leader + "\"Devices\":[";
+	const String closer = "]}}";
+	String output = leader;
+
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
@@ -584,14 +587,26 @@ String getDataString()
 		Serial.print(": ");
 		String val = sensors[i]->getData(logger.getTime());
 		Serial.println(val);
-		if(!val.equals("")) { //Only append if real result
-			if(deviceCount > 0) data = data + ","; //Preappend comma only if not first addition
-			data = data + "{" + val + "}";
-			deviceCount++;
-			// if(i + 1 < numSensors) metadata = metadata + ","; //Only append if not last entry
+		if(!val.equals("")) {  //Only append if not empty string
+			if(output.length() - output.lastIndexOf('\n') + val.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
+				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
+				output = output + "{" + val + "}"; //Append result 
+				deviceCount++;
+				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
+			}
+			else {
+				output = output + closer + "\n"; //End this packet
+				output = output + leader + "{" + val + "}"; //Start a new packet and add new payload 
+			}
 		}
+		// if(!val.equals("")) { //Only append if real result
+		// 	if(deviceCount > 0) data = data + ","; //Preappend comma only if not first addition
+		// 	data = data + "{" + val + "}";
+		// 	deviceCount++;
+		// 	// if(i + 1 < numSensors) metadata = metadata + ","; //Only append if not last entry
+		// }
 		Serial.print("Cumulative data string: "); //DEBUG!
-		Serial.println(data); //DEBUG!
+		Serial.println(output); //DEBUG!
 		// data = data + sensors[i]->getData(logger.getTime()); //DEBUG! REPLACE!
 		// if(i + 1 < numSensors) data = data + ","; //Only append if not last entry
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {
@@ -599,8 +614,8 @@ String getDataString()
 			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), false); //Turn off power for the given port on the Talon //DEBUG!
 		}
 	}
-	data = data + "]}}"; //Close data
-	return data;
+	output = output + "]}}"; //Close data
+	return output;
 }
 
 String getDiagnosticString(uint8_t level)

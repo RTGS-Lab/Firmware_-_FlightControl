@@ -74,4 +74,5 @@
 	path = lib/SparkFun_SCD30_Arduino_Library
 	url = https://github.com/sparkfun/SparkFun_SCD30_Arduino_Library.git
 [submodule "lib/Driver_-_Hedorah"]
+	path = lib/Driver_-_Hedorah
 	url = https://github.com/gemsiot/Driver_-_Hedorah.git

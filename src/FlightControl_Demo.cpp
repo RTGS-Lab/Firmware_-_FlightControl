@@ -12,6 +12,7 @@
  */
 
 // #define RAPID_START  //Does not wait for remote connection on startup
+HAL_I2C_Config acquireWireBuffer();
 void setup();
 void loop();
 void logEvents(uint8_t type);
@@ -41,6 +42,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <KestrelFileHandler.h>
 #include <Haar.h>
 #include <Hedorah.h>
+#include <Orxon.h>
 #include <SO421.h>
 #include <SP421.h>
 #include <TEROS11.h>
@@ -51,7 +53,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.7.0";
+const String firmwareVersion = "B2.7.1";
 const String schemaVersion = "2.2.0";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
@@ -78,9 +80,23 @@ Talon* talonsToTest[numTalons] = {
 	&sdi12
 };
 
+constexpr size_t I2C_BUFFER_SIZE = 64; //Set I2C buffer to 64 bytes to acomodate Orxon 
+
+HAL_I2C_Config acquireWireBuffer() {
+    HAL_I2C_Config config = {
+        .size = sizeof(HAL_I2C_Config),
+        .version = HAL_I2C_CONFIG_VERSION_1,
+        .rx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_SIZE],
+        .rx_buffer_size = I2C_BUFFER_SIZE,
+        .tx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_SIZE],
+        .tx_buffer_size = I2C_BUFFER_SIZE
+    };
+    return config;
+}
+
 /////////////////////////// BEGIN USER CONFIG ////////////////////////
-PRODUCT_ID(15820) //Configured based on the target product, comment out if device has no product
-PRODUCT_VERSION(1) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
+// PRODUCT_ID(21526) //Configured based on the target product, comment out if device has no product
+// PRODUCT_VERSION(2) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
 
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 

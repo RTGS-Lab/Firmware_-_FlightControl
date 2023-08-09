@@ -75,3 +75,6 @@
 	url = https://github.com/sparkfun/SparkFun_SCD30_Arduino_Library.git
 [submodule "lib/Driver_-_Hedorah"]
 	url = https://github.com/gemsiot/Driver_-_Hedorah.git
+[submodule "lib/Driver_-_Orxon"]
+	path = lib/Driver_-_Orxon
+	url = https://github.com/RTGS-Lab/Driver_-_Orxon.git

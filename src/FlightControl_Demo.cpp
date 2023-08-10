@@ -198,6 +198,7 @@ void setup() {
 	bool hasError = false;
 	// logger.begin(Time.now(), hasCriticalError, hasError); //Needs to be called the first time with Particle time since I2C not yet initialized 
 	logger.begin(0, hasCriticalError, hasError); //Called with 0 since time collection system has not been initialized 
+	Wire.setSpeed(100000); //Set speed to slow mode to support Orxon
 	logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::INIT);
 	bool batState = logger.testForBat(); //Check if a battery is connected
 	logger.enableI2C_OB(false);

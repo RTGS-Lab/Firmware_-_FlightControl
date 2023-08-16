@@ -85,7 +85,7 @@ Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version 
 // TDR315H soil2(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
 // TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
 // Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
-
+Orxon airQuality(0, 0, 0x00);
 const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
 
 Sensor* const sensors[numSensors] = {

@@ -41,6 +41,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <KestrelFileHandler.h>
 #include <Haar.h>
 #include <Hedorah.h>
+#include <T9602.h>
 #include <SO421.h>
 #include <SP421.h>
 #include <TEROS11.h>
@@ -51,8 +52,8 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.7.0";
-const String schemaVersion = "2.2.0";
+const String firmwareVersion = "2.7.2";
+const String schemaVersion = "2.2.1";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
@@ -96,6 +97,7 @@ Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version 
 // TDR315H soil2(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
 // TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
 // Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
+// T9602 humidity(0, 0, 0x00); //Instantiate Telair T9602 with default ports and version v0.0 
 
 const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
 

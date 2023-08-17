@@ -1,4 +1,13 @@
 # FIRMWARE
+## v2.7.2
+### Improvments
+- Added support for T9602 temp and humidity sensor
+- Added support for generic I2C communication error code
+
+## v2.7.0
+### Improvments 
+- Added support for breaking `data` messages into multiple packets
+
 ## v2.6.0
 ### Improvments
 - Reduced SD read/write speed to try to prevent corruption
@@ -147,6 +156,11 @@
 - First deployed version
 
 # SCHEMA
+## v2.2.1
+- Added T9602 humidity and temp sensor
+
+## v2.2.0
+- `data` packets now support being split between two messages
 
 ## v2.1.4
 - Changed `takeSample` to report event type `data/v2` instead of `data`

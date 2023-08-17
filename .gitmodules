@@ -76,3 +76,6 @@
 [submodule "lib/Driver_-_Hedorah"]
 	path = lib/Driver_-_Hedorah
 	url = https://github.com/gemsiot/Driver_-_Hedorah.git
+[submodule "lib/Driver_-_T9602"]
+	path = lib/Driver_-_T9602
+	url = https://github.com/RTGS-Lab/Driver_-_T9602.git

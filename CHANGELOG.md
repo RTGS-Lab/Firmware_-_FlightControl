@@ -1,4 +1,8 @@
 # FIRMWARE
+## v2.7.3
+### Improvments
+- Added repeated read attempts for Hedorah (tried to read sensor 3 times before failing out, reports error if retry needed at all, then further error if fails out)
+
 ## v2.7.2
 ### Improvments
 - Added support for T9602 temp and humidity sensor

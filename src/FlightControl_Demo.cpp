@@ -32,6 +32,7 @@ int takeSample(String dummy);
 int systemRestart(String resetType);
 int configurePowerSave(int desiredPowerSaveMode);
 #line 9 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
+#define WAIT_GPS true
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
 #include <PCAL9535A.h>
@@ -52,8 +53,8 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.7.3";
-const String schemaVersion = "2.2.1";
+const String firmwareVersion = "2.8.0";
+const String schemaVersion = "2.2.2";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
@@ -251,7 +252,10 @@ void setup() {
 
 	#ifndef RAPID_START  //Only do this if not rapid starting
 	while((!Particle.connected() || logger.gps.getFixType() == 0) && (millis() - startTime) < maxConnectTime) { //Wait while at least one of the remote systems is not connected 
-		if(Particle.connected()) logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //If cell is connected, set to PASS state
+		if(Particle.connected()) {
+			logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //If cell is connected, set to PASS state
+			if(WAIT_GPS == false) break; //If not told to wait for GPS, break out after cell is connected 
+		}
 		if(logger.gps.getTimeValid() == true) {
 			if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //If you get a 2D fix or better, pass GPS 
 				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); 

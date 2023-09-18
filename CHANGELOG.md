@@ -1,4 +1,17 @@
 # FIRMWARE
+
+## v2.8.1
+### Bug Fixes
+- Fixed I2C speed issue which caused bus to default to 100kHz. This caused the O2 init problem 
+
+## v2.8.0
+### Improvments
+- Added support for auto detection of v1.9 Kestrel logger
+- System automatically supports CSA and accel variances between v1.8 and before and v1.9
+
+### Known Bugs
+- Apogee O2 sensor fails to init
+
 ## v2.7.3
 ### Improvments
 - Added repeated read attempts for Hedorah (tried to read sensor 3 times before failing out, reports error if retry needed at all, then further error if fails out)
@@ -160,6 +173,9 @@
 - First deployed version
 
 # SCHEMA
+## v2.2.2
+- Added reporting of logger hardware version 
+
 ## v2.2.1
 - Added T9602 humidity and temp sensor
 

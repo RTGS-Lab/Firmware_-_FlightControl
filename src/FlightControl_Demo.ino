@@ -16,10 +16,12 @@
 #include <KestrelFileHandler.h>
 #include <Haar.h>
 #include <Hedorah.h>
+#include <Aleppo.h>
 #include <T9602.h>
 #include <SO421.h>
 #include <SP421.h>
 #include <TEROS11.h>
+#include <ATMOS22.h>
 #include <TDR315H.h>
 #include <I2CTalon.h>
 #include <SDI12Talon.h>
@@ -27,8 +29,8 @@
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.8.1";
-const String schemaVersion = "2.2.2";
+const String firmwareVersion = "2.8.3";
+const String schemaVersion = "2.2.3";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on

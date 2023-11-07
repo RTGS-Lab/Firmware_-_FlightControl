@@ -1,4 +1,11 @@
 # FIRMWARE
+## v2.8.3
+### Features
+- Added support for ATMOS22 wind direction sensor (beta)
+
+### Improvments 
+- Haar is able to detect and use either hardware I2C configuration automatically
+- Added I2C failure detection to T9602
 
 ## v2.8.1
 ### Bug Fixes
@@ -173,6 +180,9 @@
 - First deployed version
 
 # SCHEMA
+## v2.2.3
+- Added ATMOS22 sensor
+
 ## v2.2.2
 - Added reporting of logger hardware version 
 

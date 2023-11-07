@@ -85,3 +85,6 @@
 [submodule "lib/Driver_-_Aleppo"]
 	path = lib/Driver_-_Aleppo
 	url = https://github.com/RTGS-Lab/Driver_-_Aleppo.git
+[submodule "lib/Driver_-_ATMOS22"]
+	path = lib/Driver_-_ATMOS22
+	url = https://github.com/RTGS-Lab/Driver_-_ATMOS22.git

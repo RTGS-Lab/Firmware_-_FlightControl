@@ -1,9 +1,17 @@
 # FIRMWARE
+## v2.8.5
+### Bug Fixes
+- Fixed the erroneous reporting of `0xFFFFFFF7` error code by accel 
+
+## v2.8.4
+### Improvements
+- Added two stage test for port power fail to differentiate between a port exceeding power limits on its own, or just exceeding the Talon quota 
+
 ## v2.8.3
 ### Features
 - Added support for ATMOS22 wind direction sensor (beta)
 
-### Improvments 
+### Improvements 
 - Haar is able to detect and use either hardware I2C configuration automatically
 - Added I2C failure detection to T9602
 
@@ -12,7 +20,7 @@
 - Fixed I2C speed issue which caused bus to default to 100kHz. This caused the O2 init problem 
 
 ## v2.8.0
-### Improvments
+### Improvements
 - Added support for auto detection of v1.9 Kestrel logger
 - System automatically supports CSA and accel variances between v1.8 and before and v1.9
 
@@ -20,20 +28,20 @@
 - Apogee O2 sensor fails to init
 
 ## v2.7.3
-### Improvments
+### Improvements
 - Added repeated read attempts for Hedorah (tried to read sensor 3 times before failing out, reports error if retry needed at all, then further error if fails out)
 
 ## v2.7.2
-### Improvments
+### Improvements
 - Added support for T9602 temp and humidity sensor
 - Added support for generic I2C communication error code
 
 ## v2.7.0
-### Improvments 
+### Improvements 
 - Added support for breaking `data` messages into multiple packets
 
 ## v2.6.0
-### Improvments
+### Improvements
 - Reduced SD read/write speed to try to prevent corruption
 - Added error reporting for Talon power init 
 - Added CSA detect error report

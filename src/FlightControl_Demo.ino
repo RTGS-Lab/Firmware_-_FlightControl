@@ -29,7 +29,7 @@
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.8.4";
+const String firmwareVersion = "2.8.5";
 const String schemaVersion = "2.2.3";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 

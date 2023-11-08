@@ -1,4 +1,11 @@
 # FIRMWARE
+## v2.8.6
+### Features
+- Added ability for Kestrel to report ALS data for all bands instead of just lux
+
+### Bug Fixes
+- Fixed ranging issue which caused ALS report in diagnostic to saturate at 50331 lux
+
 ## v2.8.5
 ### Bug Fixes
 - Fixed the erroneous reporting of `0xFFFFFFF7` error code by accel 
@@ -188,6 +195,9 @@
 - First deployed version
 
 # SCHEMA
+## v2.2.4
+- Added Kestrel ALS sensor reporting 
+
 ## v2.2.3
 - Added ATMOS22 sensor
 

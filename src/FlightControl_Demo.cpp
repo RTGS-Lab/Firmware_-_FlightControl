@@ -55,11 +55,12 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.8.5";
-const String schemaVersion = "2.2.3";
+const String firmwareVersion = "2.8.6";
+const String schemaVersion = "2.2.5";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
+const uint64_t balancedDiagnosticPeriod = 3600000; //Report diagnostics once an hour //DEBUG!
 int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
 Kestrel logger;
@@ -82,6 +83,12 @@ Talon* talonsToTest[numTalons] = {
 	&sdi12
 };
 
+namespace LogModes {
+	constexpr uint8_t STANDARD = 0;
+	constexpr uint8_t PERFORMANCE = 1; 
+	constexpr uint8_t BALANCED = 2;
+};
+
 /////////////////////////// BEGIN USER CONFIG ////////////////////////
 PRODUCT_ID(15820) //Configured based on the target product, comment out if device has no product
 PRODUCT_VERSION(1) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
@@ -89,6 +96,7 @@ PRODUCT_VERSION(1) //Configure based on the firmware version you wish to create,
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
 int desiredPowerSaveMode = PowerSaveModes::BALANCED; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
+int loggingMode = LogModes::STANDARD; //Specify what level of backhaul reporting is desired
 
 Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
 // Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
@@ -316,9 +324,27 @@ void loop() {
 	// Serial.print("RAM, Start Log Events: "); //DEBUG!
 	// Serial.println(System.freeMemory()); //DEBUG!
 	logger.startTimer(logPeriod); //Start timer as soon done reading sensors //REPLACE FOR NON-SLEEP
-	if((count % 10) == 0) logEvents(3);
-	else if((count % 5) == 0) logEvents(2);
-	else if((count % 1) == 0) logEvents(1);
+	switch(loggingMode) {
+		static uint64_t lastDiagnostic = System.millis(); 
+		case (LogModes::PERFORMANCE):
+			logEvents(6);
+			break;
+		case (LogModes::STANDARD):
+			if((count % 10) == 0) logEvents(3);
+			else if((count % 5) == 0) logEvents(2);
+			else if((count % 1) == 0) logEvents(1);
+			break;
+		case (LogModes::BALANCED):
+			logEvents(7);
+			if((System.millis() - lastDiagnostic) > balancedDiagnosticPeriod) {
+				logEvents(3); //Do a full diagnostic and metadata report once an hour
+				lastDiagnostic = System.millis();
+			}
+			break;
+		default:
+			logEvents(1); //If unknown configuration, use general call 
+			// break;
+	}
 	
 	
 	// Serial.print("RAM, End Log Events: "); //DEBUG!
@@ -465,6 +491,36 @@ void logEvents(uint8_t type)
 		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::SD); //Write value out only if errors are reported 
 		fileSys.writeToFRAM(data, DataType::Data, DestCodes::SD);
 		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
+		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	}
+	else if(type == 6) { //Log ONLY data - fastest method
+		data = getDataString();
+		// diagnostic = getDiagnosticString(5);
+		// metadata = getMetadataString();
+		// errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		// Serial.println(errors); //DEBUG!
+		// Serial.println(data); //DEBUG
+		// Serial.println(metadata); //DEBUG!
+		// if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::SD); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
+		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	}
+	else if(type == 7) { //Log data and error if there
+		data = getDataString();
+		// diagnostic = getDiagnosticString(5);
+		// metadata = getMetadataString();
+		errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		// Serial.println(errors); //DEBUG!
+		// Serial.println(data); //DEBUG
+		// Serial.println(metadata); //DEBUG!
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
 		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
 	}
 	// switch(type) {

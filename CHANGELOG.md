@@ -1,4 +1,11 @@
 # FIRMWARE
+## v2.8.6
+### Features
+- Added support for variable logging 'mode'
+
+### Improvements 
+- Added reporting of cycle count for battery
+
 ## v2.8.5
 ### Bug Fixes
 - Fixed the erroneous reporting of `0xFFFFFFF7` error code by accel 
@@ -188,6 +195,12 @@
 - First deployed version
 
 # SCHEMA
+## v2.2.5
+- Added reporting of logging 'mode' in system metadata
+
+## v2.2.4
+- Added reporting of cycle count for GONK
+
 ## v2.2.3
 - Added ATMOS22 sensor
 

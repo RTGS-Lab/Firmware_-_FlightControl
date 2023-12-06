@@ -14,7 +14,7 @@
 // #define RAPID_START  //Does not wait for remote connection on startup
 void setup();
 void loop();
-void logEvents(uint8_t type);
+void logEvents(uint8_t type, uint8_t destination);
 String getErrorString();
 String getDataString();
 String getDiagnosticString(uint8_t level);
@@ -29,6 +29,7 @@ int detectTalons(String dummyStr);
 int detectSensors(String dummyStr);
 int setNodeID(String nodeID);
 int takeSample(String dummy);
+int commandExe(String command);
 int systemRestart(String resetType);
 int configurePowerSave(int desiredPowerSaveMode);
 #line 9 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
@@ -55,7 +56,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.8.7";
+const String firmwareVersion = "2.9.4";
 const String schemaVersion = "2.2.6";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
@@ -87,6 +88,7 @@ namespace LogModes {
 	constexpr uint8_t STANDARD = 0;
 	constexpr uint8_t PERFORMANCE = 1; 
 	constexpr uint8_t BALANCED = 2;
+	constexpr uint8_t NO_LOCAL = 3; //Same as standard log, but no attempt to log to SD card
 };
 
 /////////////////////////// BEGIN USER CONFIG ////////////////////////
@@ -187,6 +189,7 @@ void setup() {
 	Particle.function("findTalons", detectTalons);
 	Particle.function("systemRestart", systemRestart);
 	Particle.function("takeSample", takeSample);
+	Particle.function("commandExe", commandExe);
 	Serial.begin(1000000); 
 	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
 	Serial.print("RESET CAUSE: "); //DEBUG!
@@ -254,8 +257,14 @@ void setup() {
 	String initDiagnostic = initSensors();
 	Serial.print("DIAGNOSTIC: ");
 	Serial.println(initDiagnostic);
-	fileSys.writeToFRAM(initDiagnostic, DataType::Diagnostic, DestCodes::Both);
-	logEvents(4); //Grab data log with metadata, no diagnostics 
+	if(loggingMode == LogModes::NO_LOCAL) {
+		fileSys.writeToFRAM(initDiagnostic, DataType::Diagnostic, DestCodes::Particle);
+		logEvents(4, DestCodes::Particle); //Grab data log with metadata, no diagnostics 
+	}
+	else {
+		fileSys.writeToFRAM(initDiagnostic, DataType::Diagnostic, DestCodes::Both);
+		logEvents(4, DestCodes::Both); //Grab data log with metadata, no diagnostics 
+	}
 	// fileSys.writeToParticle(initDiagnostic, "diagnostic"); 
 	// // logger.enableSD(true);
 	// fileSys.writeToSD(initDiagnostic, "Dummy.txt");
@@ -327,22 +336,27 @@ void loop() {
 	switch(loggingMode) {
 		static uint64_t lastDiagnostic = System.millis(); 
 		case (LogModes::PERFORMANCE):
-			logEvents(6);
+			logEvents(6, DestCodes::Both);
 			break;
 		case (LogModes::STANDARD):
-			if((count % 10) == 0) logEvents(3);
-			else if((count % 5) == 0) logEvents(2);
-			else if((count % 1) == 0) logEvents(1);
+			if((count % 10) == 0) logEvents(3, DestCodes::Both);
+			else if((count % 5) == 0) logEvents(2, DestCodes::Both);
+			else if((count % 1) == 0) logEvents(1, DestCodes::Both);
 			break;
 		case (LogModes::BALANCED):
-			logEvents(7);
+			logEvents(7, DestCodes::Both);
 			if((System.millis() - lastDiagnostic) > balancedDiagnosticPeriod) {
-				logEvents(3); //Do a full diagnostic and metadata report once an hour
+				logEvents(3, DestCodes::Both); //Do a full diagnostic and metadata report once an hour
 				lastDiagnostic = System.millis();
 			}
 			break;
+		case (LogModes::NO_LOCAL):
+			if((count % 10) == 0) logEvents(3, DestCodes::Particle);
+			else if((count % 5) == 0) logEvents(2, DestCodes::Particle);
+			else if((count % 1) == 0) logEvents(1, DestCodes::Particle);
+			break;
 		default:
-			logEvents(1); //If unknown configuration, use general call 
+			logEvents(1, DestCodes::Both); //If unknown configuration, use general call 
 			// break;
 	}
 	
@@ -394,7 +408,7 @@ void loop() {
 	// System.sleep(config);
 }
 
-void logEvents(uint8_t type)
+void logEvents(uint8_t type, uint8_t destination)
 {
 	
 	// String diagnostic = "";
@@ -419,7 +433,7 @@ void logEvents(uint8_t type)
 
 		if(errors.equals("") == false) {
 			// Serial.println("Write Errors to FRAM"); //DEBUG!
-			fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+			fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
 		}
 		// fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
 		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
@@ -436,10 +450,10 @@ void logEvents(uint8_t type)
 
 		if(errors.equals("") == false) {
 			// Serial.println("Write Errors to FRAM"); //DEBUG!
-			fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+			fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
 		}
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+		fileSys.writeToFRAM(data, DataType::Data, destination);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, destination);
 	}
 	else if(type == 2) {
 		data = getDataString();
@@ -447,9 +461,9 @@ void logEvents(uint8_t type)
 		errors = getErrorString();
 		// logger.enableI2C_OB(true);
 		// logger.enableI2C_Global(false);
-		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, destination);
 	}
 	else if(type == 3) {
 		data = getDataString();
@@ -458,10 +472,10 @@ void logEvents(uint8_t type)
 		errors = getErrorString();
 		// logger.enableI2C_OB(true);
 		// logger.enableI2C_Global(false);
-		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
-		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, destination);
+		fileSys.writeToFRAM(metadata, DataType::Metadata, destination);
 	}
 	else if(type == 4) { //To be used on startup, don't grab diagnostics since init already got them
 		data = getDataString();
@@ -473,10 +487,10 @@ void logEvents(uint8_t type)
 		Serial.println(errors); //DEBUG!
 		Serial.println(data); //DEBUG
 		Serial.println(metadata); //DEBUG!
-		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
 		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
-		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+		fileSys.writeToFRAM(metadata, DataType::Metadata, destination);
 	}
 	else if(type == 5) { //To be used on startup, don't grab diagnostics since init already got them
 		data = getDataString();
@@ -504,7 +518,7 @@ void logEvents(uint8_t type)
 		// Serial.println(data); //DEBUG
 		// Serial.println(metadata); //DEBUG!
 		// if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::SD); //Write value out only if errors are reported 
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		fileSys.writeToFRAM(data, DataType::Data, destination);
 		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
 		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
 	}
@@ -518,8 +532,8 @@ void logEvents(uint8_t type)
 		// Serial.println(errors); //DEBUG!
 		// Serial.println(data); //DEBUG
 		// Serial.println(metadata); //DEBUG!
-		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
 		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
 		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
 	}
@@ -1241,10 +1255,81 @@ int takeSample(String dummy)
 {
 	logger.wake(); //Wake logger in case it was sleeping
 	wakeSensors(); //Wake up sensors from sleep
-	fileSys.writeToParticle(getDataString(), "data/v2"); 
+	if(dummy == "true") { //If told to use backhaul, use normal FRAM method
+		fileSys.writeToFRAM(getDataString(), DataType::Data, DestCodes::Both); 
+		fileSys.dumpFRAM(); //Dump data
+	}
+	else fileSys.writeToParticle(getDataString(), "data/v2"); //Otherwise fast return
 	sleepSensors(); //
 	logger.sleep();
 	return 1;
+}
+
+int commandExe(String command)
+{
+	if(command == "300") {
+		logger.releaseWDT();
+		return 1; //DEBUG!
+	}
+	if(command == "102") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getDiagnosticString(2), "diagnostic/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "103") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getDiagnosticString(3), "diagnostic/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "104") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getDiagnosticString(4), "diagnostic/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "111") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getDataString(), "data/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "120") {
+		fileSys.writeToParticle(getErrorString(), "error/v2"); 
+		return 1; //DEBUG!
+	}
+	if(command == "130") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getMetadataString(), "metadata/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "401") {
+		fileSys.wake();
+		fileSys.dumpFRAM();
+		fileSys.sleep();
+		return 1;
+	}
+	if(command == "410") {
+		fileSys.wake();
+		fileSys.eraseFRAM(); //Clear FRAM and start over
+		fileSys.sleep();
+		return 1; //DEBUG!
+	}
+	else {
+		return -1; //Return unknown command 
+	}
 }
 
 int systemRestart(String resetType)

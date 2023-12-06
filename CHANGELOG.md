@@ -1,4 +1,8 @@
 # FIRMWARE
+## v2.8.7
+### Features
+- Added reporting of logging mode in metadata - Doh! 
+
 ## v2.8.6
 ### Features
 - Added support for variable logging 'mode'
@@ -195,8 +199,11 @@
 - First deployed version
 
 # SCHEMA
-## v2.2.5
+## v2.2.6
 - Added reporting of logging 'mode' in system metadata
+
+## v2.2.5
+- Erronious increment of version, my bad - Bobby
 
 ## v2.2.4
 - Added reporting of cycle count for GONK

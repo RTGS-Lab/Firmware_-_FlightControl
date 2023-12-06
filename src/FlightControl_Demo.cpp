@@ -55,8 +55,8 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.8.6";
-const String schemaVersion = "2.2.5";
+const String firmwareVersion = "2.8.7";
+const String schemaVersion = "2.2.6";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on

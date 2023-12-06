@@ -1,4 +1,16 @@
 # FIRMWARE
+## v2.9.4
+### Features
+- Added `commandExe` cloud function for flexible commands
+- Added ability to manually release WDT for remote power cycle (accessible through `commandExe`)
+- Added ability to call `takeSample` cloud function as a particle only, or conventional backhaul
+
+### Improvement 
+- Added FRAM space warning 
+
+### Bug Fixes
+- Removed legacy error code call in Talon I2C driver 
+
 ## v2.8.7
 ### Features
 - Added reporting of logging mode in metadata - Doh! 

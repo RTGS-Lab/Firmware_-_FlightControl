@@ -29,7 +29,7 @@
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.9.4";
+const String firmwareVersion = "2.9.5";
 const String schemaVersion = "2.2.6";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
@@ -37,7 +37,7 @@ const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with ind
 const uint64_t balancedDiagnosticPeriod = 3600000; //Report diagnostics once an hour //DEBUG!
 int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
-Kestrel logger;
+Kestrel logger(true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
@@ -71,6 +71,7 @@ PRODUCT_VERSION(1) //Configure based on the firmware version you wish to create,
 const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
 int desiredPowerSaveMode = PowerSaveModes::BALANCED; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
+int loggingMode = LogModes::STANDARD; //Specify the type of logging mode you wish to use: STANDARD, PERFORMANCE, BALANCED, NO_LOCAL
 
 Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
 // Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0

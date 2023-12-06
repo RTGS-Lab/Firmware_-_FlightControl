@@ -1,4 +1,11 @@
 # FIRMWARE
+## v2.9.5
+### Features
+- Added ability for Kestrel to report ALS data for all bands instead of just lux
+
+### Bug Fixes
+- Fixed ranging issue which caused ALS report in diagnostic to saturate at 50331 lux
+
 ## v2.9.4
 ### Features
 - Added `commandExe` cloud function for flexible commands
@@ -219,6 +226,7 @@
 
 ## v2.2.4
 - Added reporting of cycle count for GONK
+- Added Kestrel ALS sensor reporting 
 
 ## v2.2.3
 - Added ATMOS22 sensor

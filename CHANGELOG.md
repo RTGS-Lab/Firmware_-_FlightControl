@@ -1,14 +1,9 @@
 # FIRMWARE
-## v1.6.0
-### Improvements
-- Added SDI-12 retry w/CRC on TDR315 and SP421
-	- Attempt 3 retry
-	- If there is no valid read after 3 tries, throw SDI12_READ_FAIL for sensor
-	- Otherwise throw SDI12_COM_FAIL even if just a single error occurs
-	- Checks for CRC match, error characters in ACK, etc
-### Features
-- TDR315 now compatible with TDR315 and TDR310
 
+## v2.9.6
+### Bug Fixes
+- Made legitimate error codes for `I2C_OB_ISO_FAIL` and `I2C_PORT_FAIL`
+- Changed error code `PUBLISH_FAIL` from `0x600100F6` to `0x600300F6` due to overlap with `SDI12_COM_FAIL` code
 
 ## v2.9.5
 ### Features
@@ -161,6 +156,16 @@
 - Fix GPS error reporting to be consistent visa-vi GPS_INIT_FAIL vs GPS_READ_FAIL
 - Fixed time sync lockup 
 - Fixed mislabeling of RTC register in diagnostic report 
+
+## v1.6.0
+### Improvements
+- Added SDI-12 retry w/CRC on TDR315 and SP421
+	- Attempt 3 retry
+	- If there is no valid read after 3 tries, throw SDI12_READ_FAIL for sensor
+	- Otherwise throw SDI12_COM_FAIL even if just a single error occurs
+	- Checks for CRC match, error characters in ACK, etc
+### Features
+- TDR315 now compatible with TDR315 and TDR310
 
 ## v1.5.3
 ### Features

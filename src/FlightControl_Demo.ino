@@ -1,8 +1,9 @@
 /*
  * Project FlightControl_Demo
- * Description:
- * Author:
- * Date:
+ * Description: Core controller for Flight data logger
+ * Author: Bobby Schulz
+ * Date: 06/14/2022
+ * © 2023 Regents of the University of Minnesota. All rights reserved.
  */
 
 // #define RAPID_START  //Does not wait for remote connection on startup

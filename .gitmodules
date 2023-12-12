@@ -75,3 +75,17 @@
 	url = https://github.com/sparkfun/SparkFun_SCD30_Arduino_Library.git
 [submodule "lib/Driver_-_Hedorah"]
 	url = https://github.com/gemsiot/Driver_-_Hedorah.git
+	path = lib/Driver_-_Hedorah
+	url = https://github.com/gemsiot/Driver_-_Hedorah.git
+[submodule "lib/Driver_-_T9602"]
+	path = lib/Driver_-_T9602
+	url = https://github.com/RTGS-Lab/Driver_-_T9602.git
+[submodule "lib/BMA456"]
+	path = lib/BMA456
+	url = https://github.com/gemsiot/BMA456.git
+[submodule "lib/Driver_-_Aleppo"]
+	path = lib/Driver_-_Aleppo
+	url = https://github.com/RTGS-Lab/Driver_-_Aleppo.git
+[submodule "lib/Driver_-_ATMOS22"]
+	path = lib/Driver_-_ATMOS22
+	url = https://github.com/RTGS-Lab/Driver_-_ATMOS22.git

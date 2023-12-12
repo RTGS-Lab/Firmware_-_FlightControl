@@ -14,7 +14,7 @@
 // #define RAPID_START  //Does not wait for remote connection on startup
 void setup();
 void loop();
-void logEvents(uint8_t type);
+void logEvents(uint8_t type, uint8_t destination);
 String getErrorString();
 String getDataString();
 String getDiagnosticString(uint8_t level);
@@ -23,12 +23,17 @@ String initSensors();
 void quickTalonShutdown();
 bool serialConnected();
 void systemConfig();
+int sleepSensors();
+int wakeSensors();
 int detectTalons(String dummyStr);
 int detectSensors(String dummyStr);
 int setNodeID(String nodeID);
 int takeSample(String dummy);
+int commandExe(String command);
 int systemRestart(String resetType);
+int configurePowerSave(int desiredPowerSaveMode);
 #line 9 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
+#define WAIT_GPS true
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
 #include <PCAL9535A.h>
@@ -38,9 +43,12 @@ int systemRestart(String resetType);
 #include <KestrelFileHandler.h>
 #include <Haar.h>
 #include <Hedorah.h>
+#include <Aleppo.h>
+#include <T9602.h>
 #include <SO421.h>
 #include <SP421.h>
 #include <TEROS11.h>
+#include <ATMOS22.h>
 #include <TDR315H.h>
 #include <I2CTalon.h>
 #include <SDI12Talon.h>
@@ -48,72 +56,74 @@ int systemRestart(String resetType);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "1.7.0";
-const String schemaVersion = "1.2.4";
+const String firmwareVersion = "2.9.5";
+const String schemaVersion = "2.2.6";
 
-const int backhaulCount = 3; //Number of log events before backhaul is performed 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
-const unsigned long indicatorTimeout = 300000; //Wait for up to 5 minutes with indicator lights on
-const unsigned long logPeriod = 30; //Wait 60 seconds between logs
+const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
+const uint64_t balancedDiagnosticPeriod = 3600000; //Report diagnostics once an hour //DEBUG!
+int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
-Kestrel logger;
+Kestrel logger(true);
 KestrelFileHandler fileSys(logger);
+Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
-AuxTalon aux1(0, 0x14); //Instantiate AUX talon with alt - null port and hardware v1.4
 I2CTalon i2c(0, 0x21); //Instantiate I2C talon with alt - null port and hardware v2.1
 SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and hardware v1.4
 PCAL9535A ioAlpha(0x20);
 PCAL9535A ioBeta(0x21);
-Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
-// SP421 apogeeSolar(sdi12, 0, 4); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface //DEBUG!
-// TEROS11 soil(sdi12, 0, 1); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface //DEBUG!
-SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface 
-// TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-TDR315H soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 
-const uint8_t numSensors = 9; 
-const uint8_t numTalons = 3;
 String globalNodeID = ""; //Store current node ID
 
-Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
-Sensor* const sensors[numSensors] = {
-	&fileSys,
-	&aux,
-	// &aux1,
-	&i2c,
-	&haar,
-	// &haar1, 
-	&logger,
-	&sdi12,
-	&battery,
-	// &apogeeO2,
-	&soil,
-	&apogeeSolar
-};
+const uint8_t numTalons = 3; //Number must match the number of objects defined in `talonsToTest` array
 
+Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
 Talon* talonsToTest[numTalons] = {
 	&aux,
-	// &aux1,
 	&i2c,
 	&sdi12
 };
 
-// namespace Pins { //Use for B402
-// 	constexpr uint16_t WD_HOLD  = D2;
-// 	constexpr uint16_t SD_CS    = D8;
-// 	constexpr uint16_t Clock_INT 	= D22;
-// 	constexpr uint16_t TALON1_GPIOA = A3;
-// 	constexpr uint16_t TALON1_GPIOB = D7;
-// 	constexpr uint16_t TALON2_GPIOA = A2;
-// 	constexpr uint16_t TALON2_GPIOB = D6;
-// 	constexpr uint16_t TALON3_GPIOA = A1;
-// 	constexpr uint16_t TALON3_GPIOB = D5;
-// 	constexpr uint16_t I2C_GLOBAL_EN = D23; //FIX!
-// 	constexpr uint16_t I2C_OB_EN = A6; //FIX!
-// }
+namespace LogModes {
+	constexpr uint8_t STANDARD = 0;
+	constexpr uint8_t PERFORMANCE = 1; 
+	constexpr uint8_t BALANCED = 2;
+	constexpr uint8_t NO_LOCAL = 3; //Same as standard log, but no attempt to log to SD card
+};
+
+/////////////////////////// BEGIN USER CONFIG ////////////////////////
+PRODUCT_ID(15820) //Configured based on the target product, comment out if device has no product
+PRODUCT_VERSION(1) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
+
+const int backhaulCount = 3; //Number of log events before backhaul is performed 
+const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
+int desiredPowerSaveMode = PowerSaveModes::BALANCED; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
+int loggingMode = LogModes::STANDARD; //Specify the type of logging mode you wish to use: STANDARD, PERFORMANCE, BALANCED, NO_LOCAL
+
+Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
+// Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
+// Haar haar2(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
+// SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
+// SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// TDR315H soil1(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// TDR315H soil2(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+// Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
+// T9602 humidity(0, 0, 0x00); //Instantiate Telair T9602 with default ports and version v0.0 
+
+const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
+
+Sensor* const sensors[numSensors] = {
+	&fileSys,
+	&aux,
+	&i2c,
+	&sdi12,
+	&battery,
+	&logger, //Add sensors after this line
+	&haar,
+};
+/////////////////////////// END USER CONFIG /////////////////////////////////
 
 namespace PinsIO { //For Kestrel v1.1
 	constexpr uint16_t VUSB = 5;
@@ -147,6 +157,8 @@ namespace PinsIOBeta { //For Kestrel v1.1
 	constexpr uint16_t FAULT4 = 14;
 }
 
+
+
 // SYSTEM_MODE(MANUAL);
 SYSTEM_MODE(SEMI_AUTOMATIC);
 // SYSTEM_MODE(AUTOMATIC); //DEBUG!
@@ -162,9 +174,7 @@ String metadata = "";
 String data = "";
 
 void setup() {
-	// System.disableReset(); //DEBUG!
-	// RESET_REASON_PIN_RESET
-	// RESET_REASON_POWER_DOWN
+	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system
 	System.enableFeature(FEATURE_RESET_INFO); //DEBUG!
 	if(System.resetReason() != RESET_REASON_POWER_DOWN) {
 		//DEBUG! Set safe mode 
@@ -179,6 +189,7 @@ void setup() {
 	Particle.function("findTalons", detectTalons);
 	Particle.function("systemRestart", systemRestart);
 	Particle.function("takeSample", takeSample);
+	Particle.function("commandExe", commandExe);
 	Serial.begin(1000000); 
 	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
 	Serial.print("RESET CAUSE: "); //DEBUG!
@@ -242,19 +253,28 @@ void setup() {
 	// logger.enableI2C_OB(false);
 	// logger.enableI2C_Global(true);
 	// String initDiagnostic = aux.begin(Time.now(), hasCriticalError, hasError);
-
+	logger.updateLocation(true); //Force GPS update (hopfully connected)
 	String initDiagnostic = initSensors();
 	Serial.print("DIAGNOSTIC: ");
 	Serial.println(initDiagnostic);
-	fileSys.writeToFRAM(initDiagnostic, DataType::Diagnostic, DestCodes::Both);
-	logEvents(4); //Grab data log with metadata, no diagnostics 
+	if(loggingMode == LogModes::NO_LOCAL) {
+		fileSys.writeToFRAM(initDiagnostic, DataType::Diagnostic, DestCodes::Particle);
+		logEvents(4, DestCodes::Particle); //Grab data log with metadata, no diagnostics 
+	}
+	else {
+		fileSys.writeToFRAM(initDiagnostic, DataType::Diagnostic, DestCodes::Both);
+		logEvents(4, DestCodes::Both); //Grab data log with metadata, no diagnostics 
+	}
 	// fileSys.writeToParticle(initDiagnostic, "diagnostic"); 
 	// // logger.enableSD(true);
 	// fileSys.writeToSD(initDiagnostic, "Dummy.txt");
 
 	#ifndef RAPID_START  //Only do this if not rapid starting
 	while((!Particle.connected() || logger.gps.getFixType() == 0) && (millis() - startTime) < maxConnectTime) { //Wait while at least one of the remote systems is not connected 
-		if(Particle.connected()) logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //If cell is connected, set to PASS state
+		if(Particle.connected()) {
+			logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //If cell is connected, set to PASS state
+			if(WAIT_GPS == false) break; //If not told to wait for GPS, break out after cell is connected 
+		}
 		if(logger.gps.getTimeValid() == true) {
 			if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //If you get a 2D fix or better, pass GPS 
 				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); 
@@ -282,7 +302,7 @@ void setup() {
 	fileSys.tryBackhaul(); //See if we can backhaul any unsent logs
 
 	// fileSys.writeToFRAM(getDiagnosticString(1), DataType::Diagnostic, DestCodes::Both); //DEBUG!
-	
+	// logEvents(3); //Grab data log with metadata //DEBUG!
 	fileSys.dumpFRAM(); //Backhaul this data right away
 	// Particle.publish("diagnostic", initDiagnostic);
 
@@ -296,7 +316,9 @@ void setup() {
 void loop() {
   // aux.sleep(false);
   static int count = 1; //Keep track of number of cycles
-
+	logger.wake(); //Wake up logger system
+	fileSys.wake(); //Wake up file handling 
+	wakeSensors(); //Wake each sensor
 	if(System.millis() > indicatorTimeout) {
 		logger.setIndicatorState(IndicatorLight::ALL, IndicatorMode::NONE); //Turn LED indicators off if it has been longer than timeout since startup (use system.millis() which does not rollover)
 		logger.enableI2C_OB(false);
@@ -311,12 +333,32 @@ void loop() {
 	// Serial.print("RAM, Start Log Events: "); //DEBUG!
 	// Serial.println(System.freeMemory()); //DEBUG!
 	logger.startTimer(logPeriod); //Start timer as soon done reading sensors //REPLACE FOR NON-SLEEP
-	if((count % 10) == 0) {
-		logger.syncTime(true); //Perform a forced time sync every 10th event
-		logEvents(3);
+	switch(loggingMode) {
+		static uint64_t lastDiagnostic = System.millis(); 
+		case (LogModes::PERFORMANCE):
+			logEvents(6, DestCodes::Both);
+			break;
+		case (LogModes::STANDARD):
+			if((count % 10) == 0) logEvents(3, DestCodes::Both);
+			else if((count % 5) == 0) logEvents(2, DestCodes::Both);
+			else if((count % 1) == 0) logEvents(1, DestCodes::Both);
+			break;
+		case (LogModes::BALANCED):
+			logEvents(7, DestCodes::Both);
+			if((System.millis() - lastDiagnostic) > balancedDiagnosticPeriod) {
+				logEvents(3, DestCodes::Both); //Do a full diagnostic and metadata report once an hour
+				lastDiagnostic = System.millis();
+			}
+			break;
+		case (LogModes::NO_LOCAL):
+			if((count % 10) == 0) logEvents(3, DestCodes::Particle);
+			else if((count % 5) == 0) logEvents(2, DestCodes::Particle);
+			else if((count % 1) == 0) logEvents(1, DestCodes::Particle);
+			break;
+		default:
+			logEvents(1, DestCodes::Both); //If unknown configuration, use general call 
+			// break;
 	}
-	else if((count % 5) == 0) logEvents(2);
-	else if((count % 1) == 0) logEvents(1);
 	
 	
 	// Serial.print("RAM, End Log Events: "); //DEBUG!
@@ -324,8 +366,9 @@ void loop() {
 	Serial.println("Log Done"); //DEBUG!
 	Serial.print("WDT Status: "); //DEBUG!
 	Serial.println(logger.feedWDT()); 
+	sleepSensors();
 	
-
+	
 	// Particle.publish("diagnostic", diagnostic);
 	// Particle.publish("error", errors);
 	// Particle.publish("data", data);
@@ -346,10 +389,16 @@ void loop() {
 
 	if((count % backhaulCount) == 0) {
 		Serial.println("BACKHAUL"); //DEBUG!
+		if(powerSaveMode >= PowerSaveModes::LOW_POWER) {
+			Particle.connect();
+			waitFor(Particle.connected, 300000); //Wait up to 5 minutes to connect if using low power modes
+		}
 		logger.syncTime();
 		fileSys.dumpFRAM(); //dump FRAM every Nth log
 	}
 	count++;
+	fileSys.sleep(); //Wait to sleep until after backhaul attempt
+	logger.sleep(); //Put system into sleep mode
 
 	// SystemSleepConfiguration config;
 	// config.mode(SystemSleepMode::STOP)
@@ -359,7 +408,7 @@ void loop() {
 	// System.sleep(config);
 }
 
-void logEvents(uint8_t type)
+void logEvents(uint8_t type, uint8_t destination)
 {
 	
 	// String diagnostic = "";
@@ -384,7 +433,7 @@ void logEvents(uint8_t type)
 
 		if(errors.equals("") == false) {
 			// Serial.println("Write Errors to FRAM"); //DEBUG!
-			fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+			fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
 		}
 		// fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
 		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
@@ -401,10 +450,10 @@ void logEvents(uint8_t type)
 
 		if(errors.equals("") == false) {
 			// Serial.println("Write Errors to FRAM"); //DEBUG!
-			fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
+			fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
 		}
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+		fileSys.writeToFRAM(data, DataType::Data, destination);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, destination);
 	}
 	else if(type == 2) {
 		data = getDataString();
@@ -412,9 +461,9 @@ void logEvents(uint8_t type)
 		errors = getErrorString();
 		// logger.enableI2C_OB(true);
 		// logger.enableI2C_Global(false);
-		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, destination);
 	}
 	else if(type == 3) {
 		data = getDataString();
@@ -423,10 +472,10 @@ void logEvents(uint8_t type)
 		errors = getErrorString();
 		// logger.enableI2C_OB(true);
 		// logger.enableI2C_Global(false);
-		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
-		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
-		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
+		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, destination);
+		fileSys.writeToFRAM(metadata, DataType::Metadata, destination);
 	}
 	else if(type == 4) { //To be used on startup, don't grab diagnostics since init already got them
 		data = getDataString();
@@ -438,10 +487,10 @@ void logEvents(uint8_t type)
 		Serial.println(errors); //DEBUG!
 		Serial.println(data); //DEBUG
 		Serial.println(metadata); //DEBUG!
-		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::Both); //Write value out only if errors are reported 
-		fileSys.writeToFRAM(data, DataType::Data, DestCodes::Both);
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
 		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::Both);
-		fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+		fileSys.writeToFRAM(metadata, DataType::Metadata, destination);
 	}
 	else if(type == 5) { //To be used on startup, don't grab diagnostics since init already got them
 		data = getDataString();
@@ -456,6 +505,36 @@ void logEvents(uint8_t type)
 		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::SD); //Write value out only if errors are reported 
 		fileSys.writeToFRAM(data, DataType::Data, DestCodes::SD);
 		fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
+		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	}
+	else if(type == 6) { //Log ONLY data - fastest method
+		data = getDataString();
+		// diagnostic = getDiagnosticString(5);
+		// metadata = getMetadataString();
+		// errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		// Serial.println(errors); //DEBUG!
+		// Serial.println(data); //DEBUG
+		// Serial.println(metadata); //DEBUG!
+		// if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, DestCodes::SD); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
+		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
+		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
+	}
+	else if(type == 7) { //Log data and error if there
+		data = getDataString();
+		// diagnostic = getDiagnosticString(5);
+		// metadata = getMetadataString();
+		errors = getErrorString();
+		// logger.enableI2C_OB(true);
+		// logger.enableI2C_Global(false);
+		// Serial.println(errors); //DEBUG!
+		// Serial.println(data); //DEBUG
+		// Serial.println(metadata); //DEBUG!
+		if(errors.equals("") == false) fileSys.writeToFRAM(errors, DataType::Error, destination); //Write value out only if errors are reported 
+		fileSys.writeToFRAM(data, DataType::Data, destination);
+		// fileSys.writeToFRAM(diagnostic, DataType::Diagnostic, DestCodes::SD);
 		// fileSys.writeToFRAM(metadata, DataType::Metadata, DestCodes::Both);
 	}
 	// switch(type) {
@@ -519,15 +598,15 @@ String getErrorString()
 	else errors = errors + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	errors = errors + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	errors = errors + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	errors = errors + "\"Devices\":{";
+	errors = errors + "\"Devices\":[";
 	for(int i = 0; i < numSensors; i++) {
 		if(sensors[i]->totalErrors() > 0) {
 			numErrors = numErrors + sensors[i]->totalErrors(); //Increment the total error count
-			if(!errors.endsWith("{")) errors = errors + ","; //Only append if not first entry
-			errors = errors + sensors[i]->getErrors();
+			if(!errors.endsWith("[")) errors = errors + ","; //Only append if not first entry
+			errors = errors + "{" + sensors[i]->getErrors() + "}";
 		}
 	}
-	errors = errors + "}}}"; //Close data
+	errors = errors + "]}}"; //Close data
 	Serial.print("Num Errors: "); //DEBUG!
 	Serial.println(numErrors); 
 	if(numErrors > 0) return errors;
@@ -536,14 +615,17 @@ String getErrorString()
 
 String getDataString()
 {
-	String data = "{\"Data\":{";
-	data = data + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
-	data = data + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosAlt() + "," + logger.getPosTimeString() + "],";
-	if(globalNodeID != "") data = data + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
-	else data = data + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
-	data = data + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	data = data + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	data = data + "\"Devices\":{";
+	String leader = "{\"Data\":{";
+	leader = leader + "\"Time\":" + logger.getTimeString() + ","; //Concatonate time
+	leader = leader + "\"Loc\":[" + logger.getPosLat() + "," + logger.getPosLong() + "," + logger.getPosAlt() + "," + logger.getPosTimeString() + "],";
+	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
+	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
+	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
+	leader = leader + "\"Devices\":[";
+	const String closer = "]}}";
+	String output = leader;
+
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
 	for(int i = 0; i < numSensors; i++) {
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
@@ -578,13 +660,31 @@ String getDataString()
 		// delay(100); //DEBUG!
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
+		Serial.print("Data string from sensor "); //DEBUG!
+		Serial.print(i);
+		Serial.print(": ");
 		String val = sensors[i]->getData(logger.getTime());
-		if(!val.equals("")) { //Only append if real result
-			if(deviceCount > 0) data = data + ","; //Preappend comma only if not first addition
-			data = data + val;
-			deviceCount++;
-			// if(i + 1 < numSensors) metadata = metadata + ","; //Only append if not last entry
+		Serial.println(val);
+		if(!val.equals("")) {  //Only append if not empty string
+			if(output.length() - output.lastIndexOf('\n') + val.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
+				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
+				output = output + "{" + val + "}"; //Append result 
+				deviceCount++;
+				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
+			}
+			else {
+				output = output + closer + "\n"; //End this packet
+				output = output + leader + "{" + val + "}"; //Start a new packet and add new payload 
+			}
 		}
+		// if(!val.equals("")) { //Only append if real result
+		// 	if(deviceCount > 0) data = data + ","; //Preappend comma only if not first addition
+		// 	data = data + "{" + val + "}";
+		// 	deviceCount++;
+		// 	// if(i + 1 < numSensors) metadata = metadata + ","; //Only append if not last entry
+		// }
+		Serial.print("Cumulative data string: "); //DEBUG!
+		Serial.println(output); //DEBUG!
 		// data = data + sensors[i]->getData(logger.getTime()); //DEBUG! REPLACE!
 		// if(i + 1 < numSensors) data = data + ","; //Only append if not last entry
 		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {
@@ -592,8 +692,8 @@ String getDataString()
 			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), false); //Turn off power for the given port on the Talon //DEBUG!
 		}
 	}
-	data = data + "}}}"; //Close data
-	return data;
+	output = output + "]}}"; //Close data
+	return output;
 }
 
 String getDiagnosticString(uint8_t level)
@@ -604,8 +704,8 @@ String getDiagnosticString(uint8_t level)
 	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Devices\":{"; //Concatonate number of sensors and level 
-	const String closer = "}}}";
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Level\":" + String(level) + ",\"Devices\":["; //Concatonate number of sensors and level 
+	const String closer = "]}}";
 	String output = leader;
 
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
@@ -627,13 +727,13 @@ String getDiagnosticString(uint8_t level)
 		if(!diagnostic.equals("")) {  //Only append if not empty string
 			if(output.length() - output.lastIndexOf('\n') + diagnostic.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
 				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
-				output = output + diagnostic; //Append result 
+				output = output + "{" + diagnostic + "}"; //Append result 
 				deviceCount++;
 				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
 			}
 			else {
 				output = output + closer + "\n"; //End this packet
-				output = output + leader + diagnostic; //Start a new packet and add new payload 
+				output = output + leader + "{" + diagnostic + "}"; //Start a new packet and add new payload 
 			}
 		}
 
@@ -656,16 +756,20 @@ String getMetadataString()
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
 	leader = leader + "\"NumDevices\":" + String(numSensors) + ","; //Concatonate number of sensors 
-	leader = leader + "\"Devices\":{";
-	const String closer = "}}}";
+	leader = leader + "\"Devices\":[";
+	const String closer = "]}}";
 	String output = leader;
 	
-	output = output + "\"System\":{";
+	output = output + "{\"System\":{";
 	// output = output + "\"DUMMY\":\"BLOODYMARYBLOODYMARYBLODDYMARY\",";
 	output = output + "\"Schema\":\"" + schemaVersion + "\",";
 	output = output + "\"Firm\":\"" + firmwareVersion + "\",";
 	output = output + "\"OS\":\"" + System.version() + "\",";
-	output = output + "\"ID\":\"" + System.deviceID() + "\"},";
+	output = output + "\"ID\":\"" + System.deviceID() + "\",";
+	output = output + "\"Update\":" + String(logPeriod) + ",";
+	output = output + "\"Backhaul\":" + String(backhaulCount) + ",";
+	output = output + "\"LogMode\":" + String(loggingMode) + ",";
+	output = output + "\"Sleep\":" + String(powerSaveMode) + "}},";
 	//FIX! Add support for device name 
 	
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
@@ -692,13 +796,13 @@ String getMetadataString()
 		if(!val.equals("")) {  //Only append if not empty string
 			if(output.length() - output.lastIndexOf('\n') + val.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
 				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
-				output = output + val; //Append result 
+				output = output + "{" + val + "}"; //Append result 
 				deviceCount++;
 				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
 			}
 			else {
 				output = output + closer + "\n"; //End this packet
-				output = output + leader + val; //Start a new packet and add new payload 
+				output = output + leader + "{" + val + "}"; //Start a new packet and add new payload 
 			}
 		}
 	}
@@ -715,9 +819,9 @@ String initSensors()
 	if(globalNodeID != "") leader = leader + "\"Node ID\":\"" + globalNodeID + "\","; //Concatonate node ID
 	else leader = leader + "\"Device ID\":\"" + System.deviceID() + "\","; //If node ID not initialized, use device ID
 	leader = leader + "\"Packet ID\":" + logger.getMessageID() + ","; //Concatonate unique packet hash
-	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Devices\":{"; //Concatonate number of sensors and level 
+	leader = leader + "\"NumDevices\":" + String(numSensors) + ",\"Devices\":["; //Concatonate number of sensors and level 
 	
-	String closer = "}}}";
+	String closer = "]}}";
 	String output = leader;
 	bool reportCriticalError = false; //Used to keep track of the global status of the error indications for all sensors
 	bool reportError = false;
@@ -759,13 +863,13 @@ String initSensors()
 		if(!val.equals("")) {  //Only append if not empty string
 			if(output.length() - output.lastIndexOf('\n') + val.length() + closer.length() + 1 < Kestrel::MAX_MESSAGE_LENGTH) { //Add +1 to account for comma appending, subtract any previous lines from count
 				if(deviceCount > 0) output = output + ","; //Add preceeding comma if not the first entry
-				output = output + val; //Append result 
+				output = output + "{" + val + "}"; //Append result 
 				deviceCount++;
 				// if(i + 1 < numSensors) diagnostic = diagnostic + ","; //Only append if not last entry
 			}
 			else {
 				output = output + closer + "\n"; //End this packet
-				output = output + leader + val; //Start a new packet and add new payload 
+				output = output + leader + "{" + val + "}"; //Start a new packet and add new payload 
 			}
 		}
 		
@@ -896,6 +1000,76 @@ void systemConfig()
 	}
 }
 
+int sleepSensors()
+{
+	if(powerSaveMode > PowerSaveModes::PERFROMANCE) { //Only turn off is power save requested 
+		Serial.println("BEGIN SENSOR SLEEP"); //DEBUG!
+		for(int s = 0; s < numSensors; s++) { //Iterate over all sensors objects
+			//If not set to keep power on and Talon is assocated, power down sensor. Ignore if core device, we will handle these seperately 
+			if(sensors[s]->keepPowered == false && sensors[s]->sensorInterface != BusType::CORE && sensors[s]->getTalonPort() > 0 && sensors[s]->getTalonPort() < numTalons) {
+				Serial.print("Power Down Sensor "); //DEBUG!
+				Serial.print(s + 1);
+				Serial.print(",");
+				Serial.println(sensors[s]->getTalonPort());
+				talons[sensors[s]->getTalonPort() - 1]->enablePower(sensors[s]->getSensorPort(), false); //Turn off power for any sensor which does not need to be kept powered
+			}
+			else if(sensors[s]->sensorInterface != BusType::CORE && sensors[s]->getTalonPort() > 0 && sensors[s]->getTalonPort() < numTalons){ //If sensor has a position and is not core, but keepPowered is true, run sleep routine
+				Serial.print("Sleep Sensor "); //DEBUG!
+				Serial.println(s + 1);
+				sensors[s]->sleep(); //If not powered down, run sleep protocol 
+			}
+			else if(sensors[s]->sensorInterface == BusType::CORE) {
+				Serial.print("Sensor "); //DEBUG!
+				Serial.print(s + 1);
+				Serial.println(" is core, do nothing"); 
+			}
+			else {
+				Serial.print("Sensor "); //DEBUG!
+				Serial.print(s + 1);
+				Serial.println(" not detected, do nothing"); 
+			}
+		}
+
+		for(int t = 0; t < Kestrel::numTalonPorts; t++) { //Iterate over all talon objects
+			if(talons[t] && talons[t]->keepPowered == false) { //If NO sensors on a given Talon require it to be kept powered, shut the whole thing down
+				Serial.print("Power Down Talon "); //DEBUG!
+				Serial.println(talons[t]->getTalonPort());
+				logger.enablePower(talons[t]->getTalonPort(), false); //Turn off power to given port 
+			}
+			else if(!talons[t]) {
+				Serial.print("Power Down Empty Port "); //DEBUG!
+				Serial.println(t + 1);
+				logger.enablePower(t + 1, false); //Turn off power to unused port
+			}
+		}
+	}
+
+	return 0; //DEBUG!
+}
+
+int wakeSensors()
+{
+	logger.enableI2C_Global(true); //Connect to external bus to talk to sensors/Talons
+	logger.enableI2C_OB(false);
+	logger.disableDataAll(); //Turn off all data to start
+	for(int p = 1; p <= Kestrel::numTalonPorts; p++) logger.enablePower(p, true); //Turn power back on to all Kestrel ports
+	for(int t = 0; t < Kestrel::numTalonPorts; t++) {
+		if(talons[t] && talons[t]->getTalonPort() != 0) {
+			logger.enableData(talons[t]->getTalonPort(), true); //Turn on data for given port
+			talons[t]->restart(); //Restart all Talons, this turns on all ports it can
+			logger.enableData(talons[t]->getTalonPort(), false); //Turn data back off for given port
+		}
+	}
+	for(int s = 0; s < numSensors; s++) {
+		if(sensors[s]->getTalonPort() != 0) {
+			logger.enableData(sensors[s]->getTalonPort(), true); //Turn on data for given port
+			sensors[s]->wake(); //Wake each sensor
+			logger.enableData(sensors[s]->getTalonPort(), false); //Turn data back off for given port
+		}
+	}
+	return 0; //DEBUG!
+}
+
 int detectTalons(String dummyStr)
 {
 		////////////// AUTO TALON DETECTION ///////////////////////
@@ -908,6 +1082,7 @@ int detectTalons(String dummyStr)
 	// for(int i = 0; i < numTalons; i++) { //Initialize all Talons //DEBUG!
 	// 	talons[i]->begin(Time.now(), hasCriticalError, hasError);
 	// }
+	// logger.enableI2C_External(false); //Turn off connection to 
 	logger.enableI2C_Global(true); //Connect to external bus to talk to sensors/Talons
 	logger.enableI2C_OB(false);
 	for(int port = 1; port <= Kestrel::numTalonPorts; port++) { //Test all ports
@@ -1041,6 +1216,7 @@ int detectSensors(String dummyStr)
 						if(sensors[s]->isPresent()) { //Test if that sensor is present, if it is, configure the port
 							sensors[s]->setTalonPort(t + 1);
 							sensors[s]->setSensorPort(p);
+							if(sensors[s]->keepPowered == true) talons[sensors[s]->getTalonPort() - 1]->keepPowered = true; //If any of the sensors on a Talon require power, set the flag for the Talon
 							Serial.print("Sensor Found:\n\t"); //DEBUG!
 							Serial.println(sensors[s]->getTalonPort());
 							Serial.print('\t');
@@ -1077,8 +1253,83 @@ int setNodeID(String nodeID)
 
 int takeSample(String dummy)
 {
-	fileSys.writeToParticle(getDataString(), "data"); 
+	logger.wake(); //Wake logger in case it was sleeping
+	wakeSensors(); //Wake up sensors from sleep
+	if(dummy == "true") { //If told to use backhaul, use normal FRAM method
+		fileSys.writeToFRAM(getDataString(), DataType::Data, DestCodes::Both); 
+		fileSys.dumpFRAM(); //Dump data
+	}
+	else fileSys.writeToParticle(getDataString(), "data/v2"); //Otherwise fast return
+	sleepSensors(); //
+	logger.sleep();
 	return 1;
+}
+
+int commandExe(String command)
+{
+	if(command == "300") {
+		logger.releaseWDT();
+		return 1; //DEBUG!
+	}
+	if(command == "102") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getDiagnosticString(2), "diagnostic/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "103") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getDiagnosticString(3), "diagnostic/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "104") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getDiagnosticString(4), "diagnostic/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "111") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getDataString(), "data/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "120") {
+		fileSys.writeToParticle(getErrorString(), "error/v2"); 
+		return 1; //DEBUG!
+	}
+	if(command == "130") {
+		logger.wake(); //Wake logger in case it was sleeping
+		wakeSensors(); //Wake up sensors from sleep
+		fileSys.writeToParticle(getMetadataString(), "metadata/v2"); 
+		sleepSensors(); //
+		logger.sleep();
+		return 1; //DEBUG!
+	}
+	if(command == "401") {
+		fileSys.wake();
+		fileSys.dumpFRAM();
+		fileSys.sleep();
+		return 1;
+	}
+	if(command == "410") {
+		fileSys.wake();
+		fileSys.eraseFRAM(); //Clear FRAM and start over
+		fileSys.sleep();
+		return 1; //DEBUG!
+	}
+	else {
+		return -1; //Return unknown command 
+	}
 }
 
 int systemRestart(String resetType)
@@ -1086,4 +1337,17 @@ int systemRestart(String resetType)
 	if(resetType.equalsIgnoreCase("hard")) System.reset(RESET_NO_WAIT); //Perform a hard reset
 	else System.reset(); //Attempt to inform cloud of a reset first 
 	return 1;
+}
+
+int configurePowerSave(int desiredPowerSaveMode)
+{
+	powerSaveMode = desiredPowerSaveMode; //Configure global flag
+	for(int s = 0; s < numSensors; s++) { //Iterate over all sensors objects
+		sensors[s]->powerSaveMode = desiredPowerSaveMode; //Set power save mode for all sensors
+	}
+
+	for(int t = 0; t < numTalons; t++)  { //Iterate over all talon objects
+		talonsToTest[t]->powerSaveMode = desiredPowerSaveMode; //Set power save mode for all talons
+	}
+	return 0; //DEBUG!
 }

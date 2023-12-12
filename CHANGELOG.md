@@ -10,6 +10,158 @@
 - TDR315 now compatible with TDR315 and TDR310
 
 
+## v2.9.5
+### Features
+- Added ability for Kestrel to report ALS data for all bands instead of just lux
+
+### Bug Fixes
+- Fixed ranging issue which caused ALS report in diagnostic to saturate at 50331 lux
+
+## v2.9.4
+### Features
+- Added `commandExe` cloud function for flexible commands
+- Added ability to manually release WDT for remote power cycle (accessible through `commandExe`)
+- Added ability to call `takeSample` cloud function as a particle only, or conventional backhaul
+
+### Improvement 
+- Added FRAM space warning 
+
+### Bug Fixes
+- Removed legacy error code call in Talon I2C driver 
+
+## v2.8.7
+### Features
+- Added reporting of logging mode in metadata - Doh! 
+
+## v2.8.6
+### Features
+- Added support for variable logging 'mode'
+
+### Improvements 
+- Added reporting of cycle count for battery
+
+## v2.8.5
+### Bug Fixes
+- Fixed the erroneous reporting of `0xFFFFFFF7` error code by accel 
+
+## v2.8.4
+### Improvements
+- Added two stage test for port power fail to differentiate between a port exceeding power limits on its own, or just exceeding the Talon quota 
+
+## v2.8.3
+### Features
+- Added support for ATMOS22 wind direction sensor (beta)
+
+### Improvements 
+- Haar is able to detect and use either hardware I2C configuration automatically
+- Added I2C failure detection to T9602
+
+## v2.8.1
+### Bug Fixes
+- Fixed I2C speed issue which caused bus to default to 100kHz. This caused the O2 init problem 
+
+## v2.8.0
+### Improvements
+- Added support for auto detection of v1.9 Kestrel logger
+- System automatically supports CSA and accel variances between v1.8 and before and v1.9
+
+### Known Bugs
+- Apogee O2 sensor fails to init
+
+## v2.7.3
+### Improvements
+- Added repeated read attempts for Hedorah (tried to read sensor 3 times before failing out, reports error if retry needed at all, then further error if fails out)
+
+## v2.7.2
+### Improvements
+- Added support for T9602 temp and humidity sensor
+- Added support for generic I2C communication error code
+
+## v2.7.0
+### Improvements 
+- Added support for breaking `data` messages into multiple packets
+
+## v2.6.0
+### Improvements
+- Reduced SD read/write speed to try to prevent corruption
+- Added error reporting for Talon power init 
+- Added CSA detect error report
+- Added FRAM power down to `ULTRA_LOW_POWER` sleep mode
+### Bug Fixes
+- Fixed JSON bug for case where CSA fails to detect 
+
+## v2.5.2
+### Improvements
+- Added fixes to default reading type of MCP3421. No longer waits fixed interval 
+
+## v2.5.1
+### Improvements
+- Updated layout of user configured elements in code to make configuration easier 
+
+## v2.5.0
+### Bug Fixes
+- Fixed automatic gain control for small signal analog read from Aux Talon
+
+## v2.4.0
+### Features
+- Added support for `ULTRA_LOW_POWER` sleep mode
+
+## v2.3.7
+### Patches
+- Added serial init to Kestrel to prevent sleep problems when not using SDI-12 Talon
+
+## v2.3.6
+### Bug Fixes
+- Made sleep keep alive/reconnect only performed in `LOW_POWER` mode
+### Patches
+- Clear RTC trim register on begin - assume erroniously set
+
+## v2.3.5
+### Improvements
+- Added reading error reporting for Hedorah
+- Added more detail to GPS error reporting 
+- Added wake time support for sensor class
+### Bug Fixes
+- Fixed 0 CO2 readings for Hedorah by adding catch/timeout 
+
+## v2.3.4
+### Features
+- Low power mode now supports sleep times greater than 23 minutes 
+### Bug Fixes
+- Fixed SDI-12 negative number bug (for SO241 and TDR315H)
+- Fixed `takeSample` call to return event type `data/v2` instead of `data`
+- Fixed battery light staying on after first log 
+- Fixed 'wake up' after first log
+
+
+## v2.3.2
+### Patches
+- When RTC enables alarm, it clears the square wave enable bit in case it has been erroniously set (which was happening) and prevents alarm pin from immediately going off
+
+## v2.3.1
+### Features
+- Added auto accel Z level on startup (if level within +/- 2.5 degrees)
+
+## v2.3.0
+### Improvements
+- Added forced cell connect time for low power logging modes
+- Added GPS support for LOW_POWER mode
+
+## v2.1.3
+### Features 
+- All of v2.x.y low power dev
+- Report TIME_DISAGREE if any time source is out of sync
+- Reports more registers from RTC in diagnostic
+- Changed publish events to /v2 e.g. "data/v2" to be in lock step with schema v2.x.y update
+### Improvements 
+- Reports different error code subtype if fail is on a first try or a retry 
+### Bug Fixes
+- Changed way FAIL_FIND is reported on SDI-12 devices 
+	Reports FAIL_FIND only if sensor is not detected, instead of also an SDI-12 fail
+- Fix GPS error reporting to be consistent visa-vi GPS_INIT_FAIL vs GPS_READ_FAIL
+- Fixed time sync lockup 
+- Fixed mislabeling of RTC register in diagnostic report 
+
 ## v1.5.3
 ### Features
 - Added forced timesync calls during backhaul events
@@ -77,6 +229,43 @@
 - First deployed version
 
 # SCHEMA
+## v2.2.6
+- Added reporting of logging 'mode' in system metadata
+
+## v2.2.5
+- Erronious increment of version, my bad - Bobby
+
+## v2.2.4
+- Added reporting of cycle count for GONK
+- Added Kestrel ALS sensor reporting 
+
+## v2.2.3
+- Added ATMOS22 sensor
+
+## v2.2.2
+- Added reporting of logger hardware version 
+
+## v2.2.1
+- Added T9602 humidity and temp sensor
+
+## v2.2.0
+- `data` packets now support being split between two messages
+
+## v2.1.4
+- Changed `takeSample` to report event type `data/v2` instead of `data`
+
+## v2.1.3
+- Added reporting of log period, backhaul count, power save mode
+
+## v2.1.2
+- Changed 'Time Sync' to 'Time Fix'
+- Changed CLOCK_NO_SYNC from 0x500103F0 to 0x500300F0
+
+## v2.1.1
+- Reports time fix value
+- Changed wrapping structure to be compliant with duplicates in DEVICES blob - v2.x.y change
+- Reports via "/v2" events 
+
 ## v1.2.3
 - Added RTC config diagnostic reporting 
 

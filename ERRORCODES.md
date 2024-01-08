@@ -1,6 +1,20 @@
 ## Error Code Description 
 
-#### Firmware Version: v2.9.6
+#### Firmware Version: v2.9.7
+
+### Structure
+
+Each error code is divided as follows 
+
+**0xCcccSSdd**
+
+**C** is the **Class**
+
+**c** is the **Code**
+
+**S** is the **Subtype**
+
+**d** is the **Hardware Device**
 
 ### Description
 

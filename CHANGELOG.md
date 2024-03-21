@@ -1,5 +1,9 @@
 # FIRMWARE
 
+## v2.9.7
+### Bug Fixes
+- Fixed generation of error codes in Aux Talon so that port and sensor are reported properly in all cases
+
 ## v2.9.6
 ### Bug Fixes
 - Made legitimate error codes for `I2C_OB_ISO_FAIL` and `I2C_PORT_FAIL`

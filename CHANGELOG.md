@@ -1,5 +1,10 @@
 # FIRMWARE
 
+## v2.9.8
+### Features
+- Added support for the Li-710 ET sensor
+	Increased SDI-12 timeout from 380 ms to 810 ms (maximum by SDI-12 spec) to acomodate sensor
+
 ## v2.9.7
 ### Bug Fixes
 - Fixed generation of error codes in Aux Talon so that port and sensor are reported properly in all cases
@@ -238,6 +243,9 @@
 - First deployed version
 
 # SCHEMA
+## v2.2.7
+- Added Li-710 sensor
+
 ## v2.2.6
 - Added reporting of logging 'mode' in system metadata
 

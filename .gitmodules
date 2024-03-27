@@ -89,3 +89,6 @@
 [submodule "lib/Driver_-_ATMOS22"]
 	path = lib/Driver_-_ATMOS22
 	url = https://github.com/RTGS-Lab/Driver_-_ATMOS22.git
+[submodule "lib/Driver_-_Li710"]
+	path = lib/Driver_-_Li710
+	url = https://github.com/RTGS-Lab/Driver_-_Li710.git

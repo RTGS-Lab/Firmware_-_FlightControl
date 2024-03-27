@@ -33,8 +33,8 @@ int takeSample(String dummy);
 int commandExe(String command);
 int systemRestart(String resetType);
 int configurePowerSave(int desiredPowerSaveMode);
-#line 9 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
-#define WAIT_GPS true
+#line 10 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
+#define WAIT_GPS false
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
 #include <PCAL9535A.h>
@@ -51,14 +51,15 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <TEROS11.h>
 #include <ATMOS22.h>
 #include <TDR315H.h>
+#include <Li710.h>
 #include <I2CTalon.h>
 #include <SDI12Talon.h>
 #include <Gonk.h>
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.9.7";
-const String schemaVersion = "2.2.6";
+const String firmwareVersion = "2.9.8";
+const String schemaVersion = "2.2.7";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
@@ -93,25 +94,26 @@ namespace LogModes {
 };
 
 /////////////////////////// BEGIN USER CONFIG ////////////////////////
-PRODUCT_ID(15820) //Configured based on the target product, comment out if device has no product
-PRODUCT_VERSION(1) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
+// PRODUCT_ID(15820) //Configured based on the target product, comment out if device has no product
+// PRODUCT_VERSION(9) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
 
-const int backhaulCount = 3; //Number of log events before backhaul is performed 
+const int backhaulCount = 4; //Number of log events before backhaul is performed 
 const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
-int desiredPowerSaveMode = PowerSaveModes::BALANCED; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
+int desiredPowerSaveMode = PowerSaveModes::LOW_POWER; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
 int loggingMode = LogModes::STANDARD; //Specify the type of logging mode you wish to use: STANDARD, PERFORMANCE, BALANCED, NO_LOCAL
 
 Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
 // Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
 // Haar haar2(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-// SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
-// SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface 
+SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
+SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface 
 // TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-// TDR315H soil1(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-// TDR315H soil2(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-// TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-// Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
+TDR315H soil1(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+TDR315H soil2(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
+Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
 // T9602 humidity(0, 0, 0x00); //Instantiate Telair T9602 with default ports and version v0.0 
+LI710 et(sdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
 
 const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
 
@@ -122,7 +124,15 @@ Sensor* const sensors[numSensors] = {
 	&sdi12,
 	&battery,
 	&logger, //Add sensors after this line
-	&haar,
+	&et
+	// &haar,
+	// &soil1,
+	// &apogeeSolar,
+	
+	// &soil2,
+	// &soil3,
+	// &gas,
+	// &apogeeO2,
 };
 /////////////////////////// END USER CONFIG /////////////////////////////////
 
@@ -340,8 +350,8 @@ void loop() {
 			logEvents(6, DestCodes::Both);
 			break;
 		case (LogModes::STANDARD):
-			if((count % 10) == 0) logEvents(3, DestCodes::Both);
-			else if((count % 5) == 0) logEvents(2, DestCodes::Both);
+			if((count % 16) == 0) logEvents(3, DestCodes::Both);
+			else if((count % 8) == 0) logEvents(2, DestCodes::Both);
 			else if((count % 1) == 0) logEvents(1, DestCodes::Both);
 			break;
 		case (LogModes::BALANCED):

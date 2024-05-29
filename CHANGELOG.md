@@ -1,9 +1,29 @@
 # FIRMWARE
+## v2.9.10
+### Improvements 
+- Updated CSA driver to test for read failures 
+	In case of read failure throw error `CSA_OB_READ_FAIL` and report value as `null` - This specifically fixes error of 32V being reported
+
+### Bug Fixes
+- Changes to CSA init error codes 
+	Name Change: `CSA_INIT_FAIL` -> `CSA_OB_INIT_FAIL`
+	Value Change: `CSA_OB_INIT_FAIL` 0x100500F0 -> 0x100500F7
+- Fixed naming bug of `PERFROMANCE` instead of `PERFORMANCE` 
+
+## v2.9.9
+### Improvements 
+- Updates to TDR315 reading
+	Added reading of internal diagnostic code from TDR315
+	Added additional quality checks for TDR315 reporting 
+	Added `TDR315_ERROR` error code
+	Designed to fix dropouts
+### Bug Fixes
+- Added port info to Li-710 error reports
 
 ## v2.9.8
 ### Features
 - Added support for the Li-710 ET sensor
-	Increased SDI-12 timeout from 380 ms to 810 ms (maximum by SDI-12 spec) to acomodate sensor
+	Increased SDI-12 timeout from 380 ms to 810 ms (maximum by SDI-12 spec) to accommodate sensor
 
 ## v2.9.7
 ### Bug Fixes
@@ -243,6 +263,11 @@
 - First deployed version
 
 # SCHEMA
+
+## v2.2.8
+- Added reporting of sensor error codes from TDR315
+- Added diagnostic report (internal readings) from TDR315
+
 ## v2.2.7
 - Added Li-710 sensor
 

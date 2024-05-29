@@ -31,8 +31,8 @@
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.9.8";
-const String schemaVersion = "2.2.7";
+const String firmwareVersion = "2.9.10";
+const String schemaVersion = "2.2.8";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
@@ -986,7 +986,7 @@ void systemConfig()
 
 int sleepSensors()
 {
-	if(powerSaveMode > PowerSaveModes::PERFROMANCE) { //Only turn off is power save requested 
+	if(powerSaveMode > PowerSaveModes::PERFORMANCE) { //Only turn off is power save requested 
 		Serial.println("BEGIN SENSOR SLEEP"); //DEBUG!
 		for(int s = 0; s < numSensors; s++) { //Iterate over all sensors objects
 			//If not set to keep power on and Talon is assocated, power down sensor. Ignore if core device, we will handle these seperately 

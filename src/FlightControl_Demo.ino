@@ -13,6 +13,7 @@
 #include <PCAL9535A.h>
 #include <Sensor.h>
 #include <Talon.h>
+#include <BaroVue10.h>
 #include <Kestrel.h>
 #include <KestrelFileHandler.h>
 #include <Haar.h>
@@ -31,8 +32,8 @@
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.9.10";
-const String schemaVersion = "2.2.8";
+const String firmwareVersion = "2.9.11";
+const String schemaVersion = "2.2.9";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
@@ -87,6 +88,7 @@ TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unk
 Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
 // T9602 humidity(0, 0, 0x00); //Instantiate Telair T9602 with default ports and version v0.0 
 LI710 et(sdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
+BaroVue10 campPressure(sdi12, 0, 0x00); // Instantiate Barovue10 with default ports and v0.0 hardware
 
 const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
 

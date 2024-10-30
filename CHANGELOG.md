@@ -1,4 +1,9 @@
 # FIRMWARE
+
+## v2.9.11
+### Features
+- Added support for BaroVue10 sensor
+
 ## v2.9.10
 ### Improvements 
 - Updated CSA driver to test for read failures 
@@ -263,6 +268,9 @@
 - First deployed version
 
 # SCHEMA
+
+## v2.2.9
+- Added BaroVue10 sensor
 
 ## v2.2.8
 - Added reporting of sensor error codes from TDR315

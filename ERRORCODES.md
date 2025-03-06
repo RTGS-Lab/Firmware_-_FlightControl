@@ -118,6 +118,7 @@ Each error code is divided as follows
 | 0x10130000 | CSA_READ_FAIL | Attempt for Talon to read CSA for power test but fail | 269680640 | 0x101300TP | I2C | 19 | 0 | Talon | Port |  | Talon.h |
 | 0x101400F7 | ALS_INIT_FAIL | Failure to initialize the ALS on the Kestrel board | 269746423 | 0x1014eeF7 | I2C | 20 | I2C Error Code | Kestrel | Sensor |  | Kestrel.h |
 | 0x101500F7 | ALS_DATA_FAIL | Failure to read data from the ALS on the Kestrel board | 269811959 | 0x1015eeF7 | I2C | 21 | 0 | Kestrel | Sensor |  | Kestrel.h |
+| 0x101600F7 | CSA_OB_READ_FAIL | Kestrel CSA read failure | 269877495 | 0x10160eF7 | I2C | 22 | CSA | Kestrel | Sensors | PAC1934 read fail | Kestrel.h |
 | 0x20010000 | SENSOR_POWER_FAIL | Report of a failure of sensor port on Talon (I2C or Aux) | 536936448 | 0x200100TP | Power | 1 | 0 | Talon | Port | FAULTx indicator | Talon.h |
 | 0x20010100 | SENSOR_POWER_FAIL_PERSISTENT | Report of a persistent failure of sensor port on Talon (I2C or Aux) | 536936704 | 0x200101TP | Power | 1 | 1 | Talon | Port | FAULTx indicator | Talon.h |
 | 0x20020000 | AUX_POWER_FAIL | Report of a failure of a sensor port on Aux Talon | 537001984 | 0x200200TP | Power | 2 | 0 | Talon | Port | FAULTx indicator | AuxTalon.h |
@@ -171,6 +172,8 @@ Each error code is divided as follows
 | 0x90010200 | TALON_PORT_RANGE_FAIL | Talon port assignment is out of range | 2415985152 | 0x90010200 | Math/Logical | 1 | 2 | 0 | 0 | Port Range Error | Sensor.h |
 | 0x90010300 | KESTREL_PORT_RANGE_FAIL | Kestrel port assignment is out of range | 2415985408 | 0x90010300 | Math/Logical | 1 | 3 | 0 | 0 | Port Range Error | Kestrel.h |
 | 0x900200F0 | OVERSIZE_PACKET | Attempt to write packet to FRAM in excess of max allowable packet size | 2416050416 | 0x900200F0 | Math/Logical | 2 | 0 | Kestrel | System Wide |  | KestrelFileHandler.h |
+| 0xA0020000 | TDR315_ERROR | TDR315 reports a failure | 2684485632 | 0xA002eeTP | Sensor | 2 | Sensor Error Code | Talon | Port | TDR315H.h |
+| 0xA0040000 | BAROVUE_QUAL_RANGE | The quality metric reported by the sensor indicates intervention | 2684616704 | 0xA0040eTP | Sensor | 4 | Quality Metric | Talon | Port |  | BaroVue10.h |
 | 0xE00100F4 | SD_NOT_INSERTED | SD insertion switch has not been pushed - SD card not physically present | 3758162164 | 0xE00100F4 | System | 1 | 0 | Kestrel | SD | CD high | KestrelFileHandler.h |
 | 0xE00200FA | WDT_OFF_LEASH | WDT has not been fed, expect a reset  | 3758227706 | 0xE00200FA | System | 2 | 0 | Kestrel | Actuation  |  | Kestrel.h |
 | 0xE0030000 | SDI12_SENSOR_MISMATCH | Sensor info mismatch with expected (1 = Address, 2 = report time, 3 = num reports) | 3758292992 | 0xE003eeTP | System | 3 | Fail Type | Talon | Port |  | SDI12Talon.h |

@@ -2,7 +2,8 @@
 
 This is a protocol to send commands to the logger when it is connected via cell. 
 
-#### WARNING: Do not execute any commands unless you are confident of their function and use! Failure to do so could result in loss of data 
+> [!WARNING]
+> Do not execute any commands unless you are confident of their function and use! Failure to do so could result in loss of data 
 
 ## Supported Commands 
 

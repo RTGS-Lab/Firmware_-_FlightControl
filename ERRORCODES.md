@@ -172,7 +172,8 @@ Each error code is divided as follows
 | 0x90010200 | TALON_PORT_RANGE_FAIL | Talon port assignment is out of range | 2415985152 | 0x90010200 | Math/Logical | 1 | 2 | 0 | 0 | Port Range Error | Sensor.h |
 | 0x90010300 | KESTREL_PORT_RANGE_FAIL | Kestrel port assignment is out of range | 2415985408 | 0x90010300 | Math/Logical | 1 | 3 | 0 | 0 | Port Range Error | Kestrel.h |
 | 0x900200F0 | OVERSIZE_PACKET | Attempt to write packet to FRAM in excess of max allowable packet size | 2416050416 | 0x900200F0 | Math/Logical | 2 | 0 | Kestrel | System Wide |  | KestrelFileHandler.h |
-| 0xA0020000 | TDR315_ERROR | TDR315 reports a failure | 2684485632 | 0xA002eeTP | Sensor | 2 | Sensor Error Code | Talon | Port | TDR315H.h |
+| 0xA0010000 | LI710_ERROR | LI710 reports a failure - attention likely needed | 2684420096 | 0xA001eeTP | Sensor | 1 | Sensor Error Code | Talon | Port | | Li710.h
+| 0xA0020000 | TDR315_ERROR | TDR315 reports a failure | 2684485632 | 0xA002eeTP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
 | 0xA0040000 | BAROVUE_QUAL_RANGE | The quality metric reported by the sensor indicates intervention | 2684616704 | 0xA0040eTP | Sensor | 4 | Quality Metric | Talon | Port |  | BaroVue10.h |
 | 0xE00100F4 | SD_NOT_INSERTED | SD insertion switch has not been pushed - SD card not physically present | 3758162164 | 0xE00100F4 | System | 1 | 0 | Kestrel | SD | CD high | KestrelFileHandler.h |
 | 0xE00200FA | WDT_OFF_LEASH | WDT has not been fed, expect a reset  | 3758227706 | 0xE00200FA | System | 2 | 0 | Kestrel | Actuation  |  | Kestrel.h |

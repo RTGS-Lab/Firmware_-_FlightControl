@@ -1,0 +1,26 @@
+name: Compile Firmware
+
+on: [push]
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Compile application
+        id: compile
+        uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
+        with:
+          particle-platform-name: 'bsom'
+          #particle-access-token: ${{ secrets.PARTICLE_ACCESS_TOKEN }}
+          device-os-version: 6.1.1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-artifact
+          path: ${{ steps.compile.outputs.firmware-path }}

@@ -104,3 +104,24 @@
 [submodule "lib/Driver_-_BaroVue10"]
 	path = lib/Driver_-_BaroVue10
 	url = https://github.com/RTGS-Lab/Driver_-_BaroVue10.git
+[submodule "lib/DPS368-Library-Arduino"]
+	path = lib/DPS368-Library-Arduino
+	url = https://github.com/gemsiot/DPS368-Library-Arduino.git
+[submodule "lib/Adafruit_SHT31"]
+	path = lib/Adafruit_SHT31
+	url = https://github.com/gems-labx/Adafruit_SHT31
+[submodule "lib/VEML3328"]
+	path = lib/VEML3328
+	url = https://github.com/gemsiot/VEML3328.git
+[submodule "lib/PAC1932_Library"]
+	path = lib/PAC1932_Library
+	url = https://github.com/bschulz1701/PAC1932_Library.git
+[submodule "lib/PCA9634"]
+	path = lib/PCA9634
+	url = https://github.com/gemsiot/PCA9634.git
+[submodule "lib/SparkFun_u-blox_GNSS_Arduino_Library"]
+	path = lib/SparkFun_u-blox_GNSS_Arduino_Library
+	url = https://github.com/sparkfun/SparkFun_u-blox_GNSS_Arduino_Library.git
+[submodule "lib/Driver_-_MCP79412"]
+	path = lib/Driver_-_MCP79412
+	url = https://github.com/gemsiot/Driver_-_MCP79412.git

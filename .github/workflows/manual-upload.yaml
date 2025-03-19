@@ -1,0 +1,73 @@
+name: Manual Upload to Particle
+
+# This workflow can only be triggered manually
+on:
+  workflow_dispatch:
+    inputs:
+      product_id:
+        description: 'Custom product ID (defaults to secret)'
+        required: false
+        default: ''
+        type: string
+      version:
+        description: 'Firmware version'
+        required: true
+        type: string
+      title:
+        description: 'Release title'
+        required: false
+        default: 'Manual Upload'
+        type: string
+      use_release_artifact:
+        description: 'Use artifact from manual-release? (yes/no)'
+        required: false
+        default: 'yes'
+        type: string
+
+jobs:
+  upload:
+    name: Upload to Particle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        if: github.event.inputs.use_release_artifact != 'yes'
+        with:
+          fetch-depth: 1
+          
+      - name: Compile firmware if not using artifact
+        id: compile
+        if: github.event.inputs.use_release_artifact != 'yes'
+        uses: particle-iot/compile-action@v1
+        with:
+          particle-platform-name: 'bsom'
+          device-os-version: 6.1.1
+
+      - name: Download release artifacts
+        if: github.event.inputs.use_release_artifact == 'yes'
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: manual-release.yaml
+          name: release-artifacts
+          path: ./firmware
+          
+      - name: Find firmware binary
+        id: find_binary
+        run: |
+          if [ "${{ github.event.inputs.use_release_artifact }}" == "yes" ]; then
+            FIRMWARE=$(find ./firmware -name "*.bin" -type f | head -n 1)
+          else
+            FIRMWARE="${{ steps.compile.outputs.firmware-path }}"
+          fi
+          echo "Using firmware: $FIRMWARE"
+          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+
+      - name: Upload product firmware to Particle
+        uses: particle-iot/firmware-upload-action@v1
+        with:
+          particle-access-token: ${{ secrets.PARTICLE_ACCESS_TOKEN }}
+          firmware-path: ${{ steps.find_binary.outputs.firmware-path }}
+          firmware-version: ${{ github.event.inputs.version }}
+          product-id: ${{ github.event.inputs.product_id || secrets.PARTICLE_PRODUCT_ID }}
+          title: ${{ github.event.inputs.title }}
+          description: 'Manual upload from GitHub Actions workflow'

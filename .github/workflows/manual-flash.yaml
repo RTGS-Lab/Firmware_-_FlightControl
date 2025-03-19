@@ -1,0 +1,66 @@
+name: Manual Flash
+
+# This workflow can only be triggered manually
+on:
+  workflow_dispatch:
+    branch:
+        description: 'Branch to compile'
+        required: false
+        default: ''
+        type: string
+    inputs:
+      device_id:
+        description: 'Device ID to flash (defaults to test device)'
+        required: false
+        default: ''
+        type: string
+      use_latest_artifact:
+        description: 'Use latest uploaded artifact? (yes/no)'
+        required: false
+        default: 'yes'
+        type: string
+
+jobs:
+  flash:
+    name: Flash Device
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Compile firmware
+        id: compile
+        if: github.event.inputs.use_latest_artifact != 'yes'
+        uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
+        with:
+          particle-platform-name: 'bsom'
+          device-os-version: 6.2.1
+
+      - name: Download latest firmware artifact
+        if: github.event.inputs.use_latest_artifact == 'yes'
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: manual-compile.yaml
+          name: firmware-binary
+          path: ./firmware
+          
+      - name: Find firmware binary
+        id: find_binary
+        run: |
+          if [ "${{ github.event.inputs.use_latest_artifact }}" == "yes" ]; then
+            FIRMWARE=$(find ./firmware -name "*.bin" -type f | head -n 1)
+          else
+            FIRMWARE="${{ steps.compile.outputs.firmware-path }}"
+          fi
+          echo "Using firmware: $FIRMWARE"
+          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+          
+      - name: Flash device
+        uses: zradlicz/flash-device-action@fef2be3306f8a1fa40c75c832e9127513d973f3a
+        with:
+          particle-access-token: ${{ secrets.PARTICLE_USER_LEVEL_ACCESS_TOKEN }}
+          device-id: ${{ github.event.inputs.device_id || secrets.PARTICLE_TEST_DEVICE_ID }}
+          firmware-path: ${{ steps.find_binary.outputs.firmware-path }}

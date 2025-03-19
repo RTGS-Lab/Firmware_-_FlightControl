@@ -1,0 +1,46 @@
+name: Manual Test
+
+# This workflow can only be triggered manually
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ github.event.inputs.branch || github.ref }}
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Create build directory
+        run: mkdir -p build
+        
+      - name: Configure CMake
+        run: cd build && cmake ..
+        
+      - name: Build
+        run: cd build && cmake --build .
+        
+      - name: Run tests
+        run: |
+          TEST_EXECUTABLE=$(find build -name "unit_tests" -type f -executable)
+          if [ -n "$TEST_EXECUTABLE" ]; then
+            $TEST_EXECUTABLE
+          else
+            echo "Test executable not found!"
+            exit 1
+          fi

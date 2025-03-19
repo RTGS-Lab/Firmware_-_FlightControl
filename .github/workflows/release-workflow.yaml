@@ -1,0 +1,130 @@
+name: Release Workflow
+
+on:
+  # Runs on direct push to master
+  push:
+    branches:
+      - master  # or 'main' depending on your main branch
+  
+  # Runs on PR completion (merge or close)
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master  # or 'main' depending on your main branch
+  
+  # Allows manual triggering from the Actions tab
+  workflow_dispatch:
+    inputs:
+      version_increment:
+        description: 'Force version increment (yes/no)'
+        required: false
+        default: 'no'
+      release_notes:
+        description: 'Custom release notes'
+        required: false
+
+jobs:
+  release:
+    name: Compile and Release
+    # Run this job if:
+    # 1. Direct push to master, or
+    # 2. PR was merged (not just closed), or
+    # 3. Manually triggered
+    if: github.event_name == 'push' || 
+        (github.event_name == 'pull_request' && github.event.pull_request.merged == true) || 
+        github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      firmware-path: ${{ steps.compile.outputs.firmware-path }}
+      firmware-version: ${{ steps.compile.outputs.firmware-version }}
+      firmware-version-updated: ${{ steps.compile.outputs.firmware-version-updated }}
+      release-url: ${{ steps.release.outputs.html_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Compile application
+        id: compile
+        uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
+        with:
+          particle-platform-name: 'bsom'
+          auto-version: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.version_increment != 'no' }}
+          device-os-version: 6.2.1
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            ${{ steps.compile.outputs.firmware-path }}
+            ${{ steps.compile.outputs.target-path }}
+
+      - name: Commit updated version file
+        id: commit
+        if: steps.compile.outputs.firmware-version-updated == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit -m "Update firmware version" -a
+          echo "updated-version-sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      # When a GitHub Action pushes commits or tags, it does not trigger a new GitHub Action job
+      - name: Push changes
+        if: steps.compile.outputs.firmware-version-updated == 'true'
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+      - name: Create archive of target directory
+        if: steps.compile.outputs.firmware-version-updated == 'true'
+        run: |
+          tar -czf debug-objects.tar.gz ${{ steps.compile.outputs.target-path }}
+
+      - name: Create GitHub release
+        id: release
+        if: steps.compile.outputs.firmware-version-updated == 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: ${{ steps.compile.outputs.firmware-path }},debug-objects.tar.gz
+          generateReleaseNotes: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release_notes == '' }}
+          body: ${{ github.event.inputs.release_notes }}
+          name: "Firmware v${{ steps.compile.outputs.firmware-version }}"
+          tag: "v${{ steps.compile.outputs.firmware-version }}"
+          commit: ${{ steps.commit.outputs.updated-version-sha || github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  upload:
+    name: Upload to Particle
+    needs: release
+    runs-on: ubuntu-latest
+    # Only run if release job has completed and the firmware version was updated
+    if: needs.release.outputs.firmware-version-updated == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: ./release
+
+      - name: Find firmware binary
+        id: find_binary
+        run: |
+          FIRMWARE=$(find ./release -name "*.bin" -type f | head -n 1)
+          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+
+      - name: Upload product firmware to Particle
+        uses: particle-iot/firmware-upload-action@v1
+        with:
+          particle-access-token: ${{ secrets.PARTICLE_ACCESS_TOKEN }}
+          firmware-path: ${{ steps.find_binary.outputs.firmware-path }}
+          firmware-version: ${{ needs.release.outputs.firmware-version }}
+          product-id: ${{ secrets.PARTICLE_PRODUCT_ID }}
+          title: 'Firmware v${{ needs.release.outputs.firmware-version }}'
+          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }})'

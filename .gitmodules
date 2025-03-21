@@ -125,3 +125,9 @@
 [submodule "lib/Driver_-_MCP79412"]
 	path = lib/Driver_-_MCP79412
 	url = https://github.com/gemsiot/Driver_-_MCP79412.git
+[submodule "test/external/googletest"]
+	path = test/external/googletest
+	url = https://github.com/google/googletest.git
+[submodule "test/external/fff"]
+	path = test/external/fff
+	url = https://github.com/meekrosoft/fff.git

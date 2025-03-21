@@ -13,8 +13,10 @@ include_directories(external/googletest/googletest/include)
 
 # Specify test executable
 add_executable(kestrel_tests 
-    main.cpp 
+    main.cpp
+    mocks/mock_wire.cpp
     unit/Driver-_-Kestrel/kestrel_basic_test.cpp
+    unit/FlightControl_Demo/flight_control_basic_test.cpp
 )
 
 # Link against GoogleTest
@@ -24,4 +26,5 @@ target_link_libraries(kestrel_tests gtest gtest_main)
 target_include_directories(kestrel_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/lib/Driver_-_Kestrel/src
+    ${CMAKE_SOURCE_DIR}/src
 )

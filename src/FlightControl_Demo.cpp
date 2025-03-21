@@ -167,7 +167,7 @@ namespace PinsIOBeta { //For Kestrel v1.1
 
 
 
-// SYSTEM_MODE(MANUAL); //User must call Partic;e.process() to stay connected to cellular after conecting, not recommended for use.
+// SYSTEM_MODE(MANUAL); //User must call Particle.process() to stay connected to cellular after conecting, not recommended for use.
 SYSTEM_MODE(SEMI_AUTOMATIC); //Particle will wait until told to connect to Cellular, but try to stay connected once connected.
 // SYSTEM_MODE(AUTOMATIC); //Particle automatically tries to connect to Cellular, once connected, user code starts running.
 

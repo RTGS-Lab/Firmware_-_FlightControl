@@ -4,7 +4,7 @@
 #include "mock_wire_defs.h"
 
 // Test fixture
-class KestrelBasicTest : public ::testing::Test {
+class FlightControlBasicTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Reset all fakes before each test
@@ -22,12 +22,12 @@ protected:
 };
 
 // A simple test to verify that Google Test is working
-TEST_F(KestrelBasicTest, GoogleTestWorks) {
+TEST_F(FlightControlBasicTest, GoogleTestWorks) {
     EXPECT_TRUE(true);
 }
 
 // A test to verify that FFF is working with our mocks
-TEST_F(KestrelBasicTest, FFFWorks) {
+TEST_F(FlightControlBasicTest, FFFWorks) {
     // Call a mocked function
     Wire.begin();
     

@@ -1,24 +1,24 @@
-// FlightControl_Demo/test/mocks/mock_wire.h
-#ifndef MOCK_WIRE_H
-#define MOCK_WIRE_H
+// test/mocks/mock_wire_defs.h
+#ifndef WIRE_MOCK_DEFS_H
+#define WIRE_MOCK_DEFS_H
 
 #include <cstdint>
 #include "fff.h"
 
-// Define fake functions for Wire library
-FAKE_VOID_FUNC(Wire_begin);
-FAKE_VOID_FUNC(Wire_setClock, unsigned long);
-FAKE_VOID_FUNC(Wire_beginTransmission, uint8_t);
-FAKE_VALUE_FUNC(uint8_t, Wire_endTransmission, bool);
-FAKE_VALUE_FUNC(uint8_t, Wire_requestFrom_3args, uint8_t, uint8_t, bool);
-FAKE_VALUE_FUNC(uint8_t, Wire_requestFrom_2args, uint8_t, uint8_t);
-FAKE_VALUE_FUNC(int, Wire_available);
-FAKE_VALUE_FUNC(int, Wire_read);
-FAKE_VOID_FUNC(Wire_write_uint8, uint8_t);
-FAKE_VOID_FUNC(Wire_write_buffer, const uint8_t*, size_t);
+// Declare fake functions
+DECLARE_FAKE_VOID_FUNC(Wire_begin);
+DECLARE_FAKE_VOID_FUNC(Wire_setClock, unsigned long);
+DECLARE_FAKE_VOID_FUNC(Wire_beginTransmission, uint8_t);
+DECLARE_FAKE_VALUE_FUNC(uint8_t, Wire_endTransmission, bool);
+DECLARE_FAKE_VALUE_FUNC(uint8_t, Wire_requestFrom_3args, uint8_t, uint8_t, bool);
+DECLARE_FAKE_VALUE_FUNC(uint8_t, Wire_requestFrom_2args, uint8_t, uint8_t);
+DECLARE_FAKE_VALUE_FUNC(int, Wire_available);
+DECLARE_FAKE_VALUE_FUNC(int, Wire_read);
+DECLARE_FAKE_VOID_FUNC(Wire_write_uint8, uint8_t);
+DECLARE_FAKE_VOID_FUNC(Wire_write_buffer, const uint8_t*, size_t);
 
-// Create a mock Wire class that delegates to our fake functions
-class TwoWire {
+// Mock Wire class declaration
+class MockWire {
 public:
     void begin() { Wire_begin(); }
     void setClock(unsigned long clock) { Wire_setClock(clock); }
@@ -36,7 +36,6 @@ public:
     void write(const uint8_t* data, size_t quantity) { Wire_write_buffer(data, quantity); }
 };
 
-// Declaration
-extern TwoWire MockWire;
+extern MockWire Wire;
 
-#endif // MOCK_WIRE_H
+#endif // WIRE_MOCK_DEFS_H

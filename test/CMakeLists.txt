@@ -12,20 +12,35 @@ include_directories(mocks)
 include_directories(external/googletest/googletest/include)
 
 # Specify test executable
-add_executable(kestrel_tests 
+add_executable(unit_tests 
+    #main test runner
     main.cpp
-    mocks/mock_wire.cpp
-    unit/Driver-_-Kestrel/kestrel_basic_test.cpp
-    unit/FlightControl_Demo/flight_control_basic_test.cpp
-    unit/FlightControl_Demo/test_harness.cpp
+    
+    # mocks
+    mocks/MockWire.cpp
+    mocks/MockParticle.h
+    
+    # Kestrel tests
+    unit/Driver-_-Kestrel/Driver-_-KestrelTest.cpp
+
+    # FlightControl_Demo tests
+    ${CMAKE_SOURCE_DIR}/src/FlightControl_Demo.cpp
+    unit/FlightControl_Demo/FlightControl_DemoTest.cpp
+    unit/FlightControl_Demo/FlightControl_DemoTestHarness.cpp
 )
 
 # Link against GoogleTest
-target_link_libraries(kestrel_tests gtest gtest_main)
+target_link_libraries(unit_tests gtest gtest_main)
 
-# Include the necessary paths for header files
-target_include_directories(kestrel_tests PRIVATE 
+# Define the TESTING preprocessor macro for all test builds
+target_compile_definitions(unit_tests PRIVATE TESTING)
+
+# Find all driver directories and add them to the include path
+file(GLOB DRIVER_DIRS ${CMAKE_SOURCE_DIR}/lib/*/src)
+
+target_include_directories(unit_tests PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/lib/Driver_-_Kestrel/src
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+    ${DRIVER_DIRS}  # Add all driver directories
 )

@@ -1,5 +1,5 @@
 // test/mocks/wire_mock.cpp
-#include "mock_wire_defs.h"
+#include "MockWireDeclare.h"
 
 // Define fake functions
 DEFINE_FAKE_VOID_FUNC(Wire_begin);

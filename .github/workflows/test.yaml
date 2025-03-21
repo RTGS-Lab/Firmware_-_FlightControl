@@ -27,11 +27,11 @@ jobs:
       run: cd build && cmake --build .
       
     - name: Find test executable
-      run: find build -name "kestrel_tests" -type f -executable
+      run: find build -name "unit_tests" -type f -executable
       
     - name: Run tests
       run: |
-        TEST_EXECUTABLE=$(find build -name "kestrel_tests" -type f -executable)
+        TEST_EXECUTABLE=$(find build -name "unit_tests" -type f -executable)
         if [ -n "$TEST_EXECUTABLE" ]; then
           $TEST_EXECUTABLE
         else

@@ -1,5 +1,7 @@
-// test_harness.h
+// test/unit/FlightControl_Demo/test_harness.h
 #pragma once
+
+#include "../../mocks/MockParticle.h"
 
 namespace test_harness {
     String callGetDataString();

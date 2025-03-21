@@ -1,7 +1,7 @@
 // FlightControl_Demo/test/unit/Driver-_-Kestrel/kestrel_basic_test.cpp
 #include "gtest/gtest.h"
 #include "fff.h"
-#include "mock_wire_defs.h"
+#include "MockWireDeclare.h"
 
 // Test fixture
 class KestrelBasicTest : public ::testing::Test {

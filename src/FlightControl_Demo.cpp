@@ -1,4 +1,8 @@
-#include "Particle.h"
+#ifndef TESTING
+#include "Particle.h" 
+#else
+#include "MockParticle.h"
+#endif
 /*
  * Project FlightControl_Demo
  * Description: Core controller for Flight data logger

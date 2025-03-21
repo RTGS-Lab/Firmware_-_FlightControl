@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 #include "fff.h"
 #include "mock_wire_defs.h"
+#include "test_harness.h"
 
 // Test fixture
 class FlightControlBasicTest : public ::testing::Test {
@@ -33,4 +34,15 @@ TEST_F(FlightControlBasicTest, FFFWorks) {
     
     // Verify it was called
     EXPECT_EQ(Wire_begin_fake.call_count, 1);
+}
+
+TEST_F(FlightControlBasicTest, GetDataStringFormat) {
+    // Setup any necessary state first
+    
+    // Call the function through the harness
+    String result = test_harness::callGetDataString();
+    
+    // Assert on expected format
+    EXPECT_TRUE(result.startsWith("{\"Data\":{"));
+    // More assertions
 }

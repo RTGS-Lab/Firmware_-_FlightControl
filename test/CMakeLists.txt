@@ -17,6 +17,7 @@ add_executable(kestrel_tests
     mocks/mock_wire.cpp
     unit/Driver-_-Kestrel/kestrel_basic_test.cpp
     unit/FlightControl_Demo/flight_control_basic_test.cpp
+    unit/FlightControl_Demo/test_harness.cpp
 )
 
 # Link against GoogleTest

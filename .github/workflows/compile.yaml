@@ -26,7 +26,7 @@ jobs:
           path: ${{ steps.compile.outputs.firmware-path }}
       
       - name: Flash device
-        uses: particle-iot/flash-device-action@1a79094a2c5e6266dd47078c00ecb46fecb0bcc3
+        uses: zradlicz/flash-device-action@736c525d8eb87a67597550c71f807e11c3031ddd
         with:
           particle-access-token: ${{ secrets.PARTICLE_USER_LEVEL_ACCESS_TOKEN }}
           device-id: ${{ secrets.PARTICLE_TEST_DEVICE_ID }}

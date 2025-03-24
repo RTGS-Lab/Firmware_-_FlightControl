@@ -24,3 +24,10 @@ jobs:
         with:
           name: firmware-artifact
           path: ${{ steps.compile.outputs.firmware-path }}
+      
+      - name: Flash device
+        uses: particle-iot/flash-device-action@1a79094a2c5e6266dd47078c00ecb46fecb0bcc3
+        with:
+          particle-access-token: ${{ secrets.PARTICLE_ACCESS_TOKEN }}
+          device-id: ${{ secrets.PARTICLE_TEST_DEVICE_ID }}
+          firmware-path: ${{ steps.compile.outputs.firmware-path }}

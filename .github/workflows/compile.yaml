@@ -26,7 +26,7 @@ jobs:
           path: ${{ steps.compile.outputs.firmware-path }}
       
       - name: Flash device
-        uses: zradlicz/flash-device-action@e374b436ca975843a79fb30c20c2163b46bff117
+        uses: zradlicz/flash-device-action@f7c67f9a6d1a09329b5290ff9808d34597e5e4b1
         with:
           particle-access-token: ${{ secrets.PARTICLE_USER_LEVEL_ACCESS_TOKEN }}
           device-id: ${{ secrets.PARTICLE_TEST_DEVICE_ID }}

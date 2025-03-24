@@ -66,5 +66,5 @@ public:
 // For example:
 typedef uint8_t byte;
 
-// Time functions
-unsigned long millis() { return 0; }  // Mock implementation
+// Time functions are implemented in MockArduino.cpp
+// Don't define millis() here to avoid duplicate definition

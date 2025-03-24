@@ -31,17 +31,17 @@ add_library(mocks STATIC
 )
 
 # Specify test executable
-add_executable(kestrel_tests 
+add_executable(unit_tests 
     # Main test runner
     main.cpp
     
     # Kestrel tests
-    unit/Driver-_-Kestrel/Driver-_-KestrelTest.cpp
-    unit/Driver-_-Kestrel/KestrelFunctionTests.cpp
+    unit/Driver_-_Kestrel/Driver_-_KestrelSetupTests.cpp
+    unit/Driver_-_Kestrel/Driver_-_KestrelFunctionTests.cpp
 )
 
 # Link against mocks and GoogleTest
-target_link_libraries(kestrel_tests mocks gtest gtest_main)
+target_link_libraries(unit_tests mocks gtest gtest_main)
 
 # Find all driver directories and add them to the include path
 file(GLOB DRIVER_DIRS ${CMAKE_SOURCE_DIR}/lib/*/src)
@@ -54,7 +54,7 @@ target_include_directories(mocks BEFORE PUBLIC
     ${DRIVER_DIRS}  # Add all driver directories
 )
 
-target_include_directories(kestrel_tests BEFORE PRIVATE
+target_include_directories(unit_tests BEFORE PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks  # Mocks FIRST
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src

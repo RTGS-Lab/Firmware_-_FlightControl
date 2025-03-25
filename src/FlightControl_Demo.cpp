@@ -1,9 +1,9 @@
-/******************************************************/
-//       THIS IS A GENERATED FILE - DO NOT EDIT       //
-/******************************************************/
+#ifndef TESTING
+#include "Particle.h" 
+#else
+#include "MockParticle.h"
+#endif
 
-#include "Particle.h"
-#line 1 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
 /*
  * Project FlightControl_Demo
  * Description: Core controller for Flight data logger
@@ -33,13 +33,14 @@ int takeSample(String dummy);
 int commandExe(String command);
 int systemRestart(String resetType);
 int configurePowerSave(int desiredPowerSaveMode);
-#line 10 "c:/Users/schul/Documents/Firmware_-_FlightControl-Demo/src/FlightControl_Demo.ino"
+
 #define WAIT_GPS false
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
 #include <PCAL9535A.h>
 #include <Sensor.h>
 #include <Talon.h>
+#include <BaroVue10.h>
 #include <Kestrel.h>
 #include <KestrelFileHandler.h>
 #include <Haar.h>
@@ -58,8 +59,8 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-const String firmwareVersion = "2.9.10";
-const String schemaVersion = "2.2.8";
+const String firmwareVersion = "2.9.11";
+const String schemaVersion = "2.2.9";
 
 const unsigned long maxConnectTime = 180000; //Wait up to 180 seconds for systems to connect 
 const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with indicator lights on
@@ -94,8 +95,8 @@ namespace LogModes {
 };
 
 /////////////////////////// BEGIN USER CONFIG ////////////////////////
-// PRODUCT_ID(15820) //Configured based on the target product, comment out if device has no product
-// PRODUCT_VERSION(9) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
+//PRODUCT_ID(18596) //Configured based on the target product, comment out if device has no product
+PRODUCT_VERSION(30) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
 
 const int backhaulCount = 4; //Number of log events before backhaul is performed 
 const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
@@ -114,6 +115,7 @@ TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unk
 Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
 // T9602 humidity(0, 0, 0x00); //Instantiate Telair T9602 with default ports and version v0.0 
 LI710 et(sdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
+BaroVue10 campPressure(sdi12, 0, 0x00); // Instantiate Barovue10 with default ports and v0.0 hardware
 
 const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
 
@@ -170,12 +172,13 @@ namespace PinsIOBeta { //For Kestrel v1.1
 
 
 
-// SYSTEM_MODE(MANUAL);
-SYSTEM_MODE(SEMI_AUTOMATIC);
-// SYSTEM_MODE(AUTOMATIC); //DEBUG!
-SYSTEM_THREAD(ENABLED); //USE FOR FASTER STARTUP
+// SYSTEM_MODE(MANUAL); //User must call Particle.process() to stay connected to cellular after conecting, not recommended for use.
+SYSTEM_MODE(SEMI_AUTOMATIC); //Particle will wait until told to connect to Cellular, but try to stay connected once connected.
+// SYSTEM_MODE(AUTOMATIC); //Particle automatically tries to connect to Cellular, once connected, user code starts running.
+
+SYSTEM_THREAD(ENABLED); //SYSTEM_THREAD enabled means Network processign runs on different thread than user loop code, recommended for use.
 // SYSTEM_THREAD(DISABLED); 
-// SYSTEM_MODE(AUTOMATIC);
+
 int detectTalons(String dummyStr = "");
 int detectSensors(String dummyStr = "");
 
@@ -185,8 +188,8 @@ String metadata = "";
 String data = "";
 
 void setup() {
-	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system
-	System.enableFeature(FEATURE_RESET_INFO); //DEBUG!
+	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system (Talons and Sensors)
+	System.enableFeature(FEATURE_RESET_INFO); //Allows for Particle to see reason for last reset using System.resetReason();
 	if(System.resetReason() != RESET_REASON_POWER_DOWN) {
 		//DEBUG! Set safe mode 
 		Particle.connect(); //DEBUG! //If reset not caused by power switch, assume something bad happened, just connect to particle straight away

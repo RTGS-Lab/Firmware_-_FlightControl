@@ -34,3 +34,6 @@
 #VS Code
 .vscode/
 target/
+
+#build
+build/

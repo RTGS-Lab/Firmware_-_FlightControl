@@ -1,0 +1,36 @@
+name: Manual Compile
+
+# This workflow can only be triggered manually
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to compile'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  compile:
+    name: Compile Firmware
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Compile application
+        id: compile
+        uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
+        with:
+          particle-platform-name: 'bsom'
+          device-os-version: 6.2.1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-binary
+          path: ${{ steps.compile.outputs.firmware-path }}
+          retention-days: 1

@@ -118,6 +118,6 @@ jobs:
           particle-access-token: ${{ secrets.PARTICLE_ACCESS_TOKEN }}
           firmware-path: ${{ steps.find_binary.outputs.firmware-path }}
           firmware-version: ${{ needs.release.outputs.firmware-version }}
-          product-id: ${{ secrets.PARTICLE_PRODUCT_ID }}
+          product-id: ${{ secrets.PARTICLE_GEMS_DEMO_PRODUCT_ID }}
           title: 'Firmware v${{ needs.release.outputs.firmware-version }}'
           description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }})'

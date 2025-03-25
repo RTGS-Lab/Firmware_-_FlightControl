@@ -41,7 +41,7 @@ jobs:
         uses: particle-iot/compile-action@v1
         with:
           particle-platform-name: 'bsom'
-          device-os-version: 6.1.1
+          device-os-version: 6.2.1
 
       - name: Download release artifacts
         if: github.event.inputs.use_release_artifact == 'yes'

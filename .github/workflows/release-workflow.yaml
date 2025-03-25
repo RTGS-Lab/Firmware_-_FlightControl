@@ -1,17 +1,12 @@
 name: Release Workflow
 
 on:
-  # Runs on direct push to master
+  # Runs on direct push to master, but we'll check if it's from a PR merge in the job condition
   push:
     branches:
       - master  # or 'main' depending on your main branch
   
-  # Runs on PR completion (merge or close)
-  pull_request:
-    types:
-      - closed
-    branches:
-      - master  # or 'main' depending on your main branch
+  # Removed pull_request trigger to avoid duplicate runs
   
   # Allows manual triggering from the Actions tab
   workflow_dispatch:
@@ -28,12 +23,9 @@ jobs:
   release:
     name: Compile and Release
     # Run this job if:
-    # 1. Direct push to master, or
-    # 2. PR was merged (not just closed), or
-    # 3. Manually triggered
-    if: github.event_name == 'push' || 
-        (github.event_name == 'pull_request' && github.event.pull_request.merged == true) || 
-        github.event_name == 'workflow_dispatch'
+    # 1. Any push to master (including PR merges)
+    # 2. Manually triggered
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       firmware-path: ${{ steps.compile.outputs.firmware-path }}
@@ -45,6 +37,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
       - name: Compile application
         id: compile

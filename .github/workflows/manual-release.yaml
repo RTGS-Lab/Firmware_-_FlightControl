@@ -41,7 +41,7 @@ jobs:
         with:
           particle-platform-name: 'bsom'
           auto-version: ${{ github.event.inputs.force_version_increment == 'yes' }}
-          device-os-version: 6.1.1
+          device-os-version: 6.2.1
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

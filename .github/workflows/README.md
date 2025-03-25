@@ -21,9 +21,10 @@ Each job only runs if the previous job succeeds, providing a complete validation
 ### Release Workflow (`release-workflow.yaml`)
 
 Triggered in the following scenarios:
-- When a PR is merged to `master` (note: closing without merging won't trigger the release)
-- When code is pushed directly to `master`
+- When code is pushed to `master` (including PR merges)
 - Manually from the GitHub Actions tab
+
+Note: The workflow has been simplified to only trigger on push events to avoid running twice when PRs are merged.
 
 This workflow has two sequential jobs:
 

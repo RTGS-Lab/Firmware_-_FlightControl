@@ -1,0 +1,98 @@
+name: Pull Request Workflow
+
+on:
+  # Runs on PR open
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - master  # or 'main' depending on your main branch
+  
+  # Allows manual triggering from the Actions tab
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual trigger'
+        required: false
+        default: 'Manual testing'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Create build directory
+        run: mkdir -p build
+        
+      - name: Configure CMake
+        run: cd build && cmake ..
+        
+      - name: Build
+        run: cd build && cmake --build .
+        
+      - name: Run tests
+        run: |
+          TEST_EXECUTABLE=$(find build -name "unit_tests" -type f -executable)
+          if [ -n "$TEST_EXECUTABLE" ]; then
+            $TEST_EXECUTABLE
+          else
+            echo "Test executable not found!"
+            exit 1
+          fi
+
+  compile:
+    name: Compile Firmware
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Compile application
+        id: compile
+        uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
+        with:
+          particle-platform-name: 'bsom'
+          device-os-version: 6.1.1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-artifact
+          path: ${{ steps.compile.outputs.firmware-path }}
+          retention-days: 1
+
+  flash:
+    name: Flash Test Device
+    needs: compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download firmware artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-artifact
+          path: ./firmware
+
+      - name: Find firmware binary
+        id: find_binary
+        run: |
+          FIRMWARE=$(find ./firmware -name "*.bin" -type f | head -n 1)
+          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+          
+      - name: Flash device
+        uses: zradlicz/flash-device-action@fef2be3306f8a1fa40c75c832e9127513d973f3a
+        with:
+          particle-access-token: ${{ secrets.PARTICLE_USER_LEVEL_ACCESS_TOKEN }}
+          device-id: ${{ secrets.PARTICLE_TEST_DEVICE_ID }}
+          firmware-path: ${{ steps.find_binary.outputs.firmware-path }}

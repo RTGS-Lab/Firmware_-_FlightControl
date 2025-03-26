@@ -1,23 +1,17 @@
-#pragma once
+#ifndef MOCK_PCAL9535A_H
+#define MOCK_PCAL9535A_H
 
-#include "fff.h"
-#include <cstdint>
+#include <gmock/gmock.h>
+#include "PCAL9535A.h"
 
-// Declare fake functions
-DECLARE_FAKE_VALUE_FUNC(bool, PCAL9535A_begin);
-DECLARE_FAKE_VALUE_FUNC(bool, PCAL9535A_pinMode, uint8_t, uint8_t);
-DECLARE_FAKE_VALUE_FUNC(bool, PCAL9535A_digitalWrite, uint8_t, uint8_t);
-DECLARE_FAKE_VALUE_FUNC(uint8_t, PCAL9535A_digitalRead, uint8_t);
-DECLARE_FAKE_VALUE_FUNC(bool, PCAL9535A_begin_address, uint8_t);
-
-// Mock class for PCAL9535A IO expander
-class PCAL9535A {
+class MockPCAL9535A : public PCAL9535A {
 public:
-    bool begin() { return PCAL9535A_begin(); }
-    bool pinMode(uint8_t pin, uint8_t mode) { return PCAL9535A_pinMode(pin, mode); }
-    bool digitalWrite(uint8_t pin, uint8_t value) { return PCAL9535A_digitalWrite(pin, value); }
-    uint8_t digitalRead(uint8_t pin) { return PCAL9535A_digitalRead(pin); }
-    bool begin(uint8_t address) { return PCAL9535A_begin_address(address); }
-    
-    // Add more methods as needed for Kestrel tests
+    MOCK_METHOD(bool, begin, (TwoWire* wire, uint8_t addr));
+    MOCK_METHOD(bool, pinMode, (uint16_t pin, uint8_t mode));
+    MOCK_METHOD(bool, digitalWrite, (uint16_t pin, uint8_t value));
+    MOCK_METHOD(uint8_t, digitalRead, (uint16_t pin));
+    MOCK_METHOD(bool, digitalWritePort, (uint8_t port, uint8_t value));
+    MOCK_METHOD(uint8_t, digitalReadPort, (uint8_t port));
 };
+
+#endif // MOCK_PCAL9535A_H

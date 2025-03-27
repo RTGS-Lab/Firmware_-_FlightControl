@@ -69,6 +69,20 @@ public:
         return String(value_ + other);
     }
 
+    String operator+(int other) const {
+        return String(value_ + std::to_string(other));
+    }
+
+    String endsWith(const String& suffix) const {
+        if (suffix.length() > value_.length()) return false;
+        return value_.compare(value_.length() - suffix.length(), suffix.length(), suffix.value_) == 0;
+    }
+
+    String remove(size_t pos, size_t len) {
+        if (pos >= value_.length()) return *this;
+        return String(value_.erase(pos, len));
+    }
+
 private:
     std::string value_;
 };
@@ -88,6 +102,7 @@ typedef bool boolean;
 #define OUTPUT 1
 #define INPUT_PULLUP 2
 #define SERIAL_8N1 0x00
+#define HEX 16
 
 // Stream base class
 class Stream {
@@ -158,12 +173,10 @@ public:
 extern TwoWire Wire;
 
 // EEPROM
-namespace EEPROM {
-    template<typename T>
-    void get(int addr, T& val) {
-        val = T();
-    }
-}
+class EEPROM {
+public:
+    void get(int addr, float val) {}
+};
 
 // System class that appears in many Particle programs
 class SystemClass {
@@ -174,6 +187,7 @@ public:
     void reset() {}
     const char* version() { return "1.0.0"; }
     String deviceID() { return "TEST_DEVICE_ID"; }
+    bool freeMemory() { return true; }
 };
 
 extern SystemClass System;

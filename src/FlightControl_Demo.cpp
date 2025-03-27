@@ -232,7 +232,14 @@ String errors = "";      // Storage for error messages
 String metadata = "";    // Storage for system metadata
 String data = "";        // Storage for sensor data
 
-// Main system initialization function - called once at startup
+//Doxygen style comment
+/**
+ * @brief Main setup function for the FlightControl_Demo project.
+ * 
+ * This function initializes the hardware and firmware components of the system,
+ * configures power saving modes, sets up serial communication, registers cloud
+ * functions, and initializes various sensors and Talon boards.
+ */
 void setup() {
 	// Configure power saving mode for the entire system based on user configuration
 	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system (Talons and Sensors)
@@ -1737,7 +1744,7 @@ int systemRestart(String resetType)
  *
  * @param desiredPowerSaveMode Integer value from PowerSaveModes enum 
  *                            (PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER)
- * @return int 0 on success
+ * @return int 0
  */
 int configurePowerSave(int desiredPowerSaveMode)
 {

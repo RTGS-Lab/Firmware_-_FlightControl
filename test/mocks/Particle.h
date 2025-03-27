@@ -173,7 +173,7 @@ public:
 extern TwoWire Wire;
 
 // EEPROM
-class EEPROM {
+class EEPROMClass {
 public:
     void get(int addr, float val) {}
 };
@@ -237,6 +237,8 @@ void delay(unsigned long ms);
 void pinMode(uint16_t pin, uint8_t mode);
 void digitalWrite(uint16_t pin, uint8_t value);
 int digitalRead(uint16_t pin);
+
+extern EEPROMClass EEPROM;
 
 // Define min/max functions if not already defined
 #ifndef min

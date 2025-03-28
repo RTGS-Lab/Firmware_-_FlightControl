@@ -131,7 +131,7 @@ Sensor* const sensors[numSensors] = {
 	&battery,
 	&logger, //Add sensors after this line
 	&et,
-	&haar,
+	&haar
 	// &soil1,
 	// &apogeeSolar,
 	

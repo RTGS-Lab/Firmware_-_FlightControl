@@ -128,3 +128,6 @@
 [submodule "test/external/googletest"]
 	path = test/external/googletest
 	url = https://github.com/google/googletest.git
+[submodule "lib/FlightControl-platform-dependencies"]
+	path = lib/FlightControl-platform-dependencies
+	url = https://github.com/gemsiot/FlightControl-platform-dependencies.git

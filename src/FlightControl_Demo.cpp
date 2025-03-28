@@ -121,7 +121,7 @@ Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 ha
 LI710 et(sdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
 BaroVue10 campPressure(sdi12, 0, 0x00); // Instantiate Barovue10 with default ports and v0.0 hardware
 
-const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
+const uint8_t numSensors = 8; //Number must match the number of objects defined in `sensors` array
 
 Sensor* const sensors[numSensors] = {
 	&fileSys,
@@ -130,8 +130,8 @@ Sensor* const sensors[numSensors] = {
 	&sdi12,
 	&battery,
 	&logger, //Add sensors after this line
-	&et
-	// &haar,
+	&et,
+	&haar,
 	// &soil1,
 	// &apogeeSolar,
 	

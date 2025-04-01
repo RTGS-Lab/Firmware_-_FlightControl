@@ -60,6 +60,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <memory>
 
 #include "platform/ParticleTimeProvider.h"
+#include "platform/ParticleGpio.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -70,8 +71,11 @@ const uint64_t balancedDiagnosticPeriod = 3600000; //Report diagnostics once an 
 int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
 ParticleTimeProvider realTimeProvider;
+ParticleGpio realGpio;
 
-Kestrel logger(realTimeProvider, true);
+Kestrel logger(realTimeProvider, 
+			   realGpio,
+			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4

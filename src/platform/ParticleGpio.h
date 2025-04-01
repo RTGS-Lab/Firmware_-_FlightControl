@@ -15,9 +15,9 @@ public:
     ~ParticleGpio() override = default;
 
     // Implement methods from IGpio
-    void pinMode(uint16_t pin, PinMode mode) override;
+    void pinMode(uint16_t pin, IPinMode mode) override;
     void digitalWrite(uint16_t pin, uint8_t value) override;
-    uint32_t digitlaRead(uint16_t pin) override;
+    int32_t digitalRead(uint16_t pin) override;
 };
 
 #endif // PARTICLE_GPIO_H

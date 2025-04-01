@@ -13,9 +13,8 @@ public:
     IResetReason resetReason() override;
     uint32_t freeMemory() override;
 
-    // Update the override signature to return IWakeupReason
-    IWakeupReason sleep(const particle::SystemSleepConfiguration& config) override;
-
+    // Updated sleep signature to use ISleepConfig from the interface
+    IWakeupReason sleep(const ISleepConfig& config) override;
 };
 
 #endif // PARTICLE_SYSTEM_H

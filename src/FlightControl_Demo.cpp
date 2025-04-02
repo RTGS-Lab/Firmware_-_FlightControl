@@ -62,6 +62,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "platform/ParticleTimeProvider.h"
 #include "platform/ParticleGpio.h"
 #include "platform/ParticleSystem.h"
+#include "platform/ParticleWire.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -74,10 +75,12 @@ int powerSaveMode = 0; //Default to 0, update when configure power save mode is 
 ParticleTimeProvider realTimeProvider;
 ParticleGpio realGpio;
 ParticleSystem realSystem;
+ParticleWire realWire;
 
 Kestrel logger(realTimeProvider, 
 			   realGpio,
 			   realSystem,
+			   realWire,
 			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 

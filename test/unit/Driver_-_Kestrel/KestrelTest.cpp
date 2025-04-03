@@ -4,44 +4,72 @@
 // Include our mock headers first
 #include "Particle.h"
 #include "MockSensor.h"
-//#include "PCAL9535A.h" // Uncomment if you need to use the actual PCAL9535A
-//#include "MockPAC9634.h" // Uncomment if you need to use the actual PAC1934
+#include "MockPCAL9535A.h"
+#include "MockPCA9634.h"
 #include "MockMCP79412.h"
-//#include "MockSparkFun_u_blox_GNSS.h" // Uncomment if you need to use the actual SFE_UBLOX_GNSS
-//#include "MockPAC1934.h" // Uncomment if you need to use the actual PAC1934
+#include "MockSFE_UBLOX_GNSS.h"
 #include "MockVEML3328.h"
-//#include "MockAdafruit_SHT4x.h" // Uncomment if you need to use the actual Adafruit_SHT4x
 #include "MockMXC6655.h"
-//#include "MockBMA456.h" // Uncomment if you need to use the actual BMA456
 
+// Include platform interface mocks
+#include "MockTimeProvider.h"
+#include "MockGpio.h"
+#include "MockSystem.h"
+#include "MockWire.h"
+#include "MockCloud.h"
+#include "MockSerial.h"
 
 // This must be included AFTER mocks to ensure the mocks are used
 // instead of actual hardware implementations
 #include "Kestrel.h"
 
-// Forward declarations for other mocked dependencies needed
-class MockSensor;
-//class MockPCAL9535A;
-//class MockPAC1934; // Uncomment if you need to use the actual PAC1934
-class MockMCP79412;
-//class MockSFE_UBLOX_GNSS; // Uncomment if you need to use the actual SFE_UBLOX_GNSS
-//class MockPAC1934; // Uncomment if you need to use the actual PAC1934
-class MockVEML3328;
-//class MockAdafruit_SHT4x; // Uncomment if you need to use the actual Adafruit_SHT4x
-class MockMXC6655;
-//class MockBMA456; // Uncomment if you need to use the actual BMA456
-
-
 // Test fixture class for Kestrel tests
 class KestrelTest : public ::testing::Test {
 protected:
+    // Our platform interface mocks
+    MockTimeProvider mockTimeProvider;
+    MockGpio mockGpio;
+    MockSystem mockSystem;
+    MockWire mockWire;
+    MockCloud mockCloud;
+    MockSerial mockSerialDebug;
+    MockSerial mockSerialSdi12;
+    
+    // Additional hardware component mocks that would need injection
+    MockPCAL9535A mockIoOB;
+    MockPCAL9535A mockIoTalon;
+    MockPCA9634 mockLed;
+    MockMCP79412 mockRtc;
+    MockSFE_UBLOX_GNSS mockGps;
+    MockVEML3328 mockAls;
+    MockMXC6655 mockAccel;
+
     // Set up mocks and test objects
     void SetUp() override {
-        // Any test setup code goes here
+        // Set up default mock behavior here
+        EXPECT_CALL(mockWire, isEnabled())
+            .WillRepeatedly(::testing::Return(false));
+            
+        // Add more default behaviors as needed
     }
 
     void TearDown() override {
         // Any test cleanup code goes here
+    }
+    
+    // Helper method to create a Kestrel instance with mocks
+    // Note: This only passes the platform interface mocks, not hardware component mocks
+    Kestrel createKestrel() {
+        return Kestrel(
+            mockTimeProvider,
+            mockGpio,
+            mockSystem,
+            mockWire,
+            mockCloud,
+            mockSerialDebug,
+            mockSerialSdi12,
+            false // useSensors
+        );
     }
 };
 
@@ -117,122 +145,110 @@ TEST_F(KestrelTest, TestMockVEML3328) {
     EXPECT_FLOAT_EQ(value, 123.45f);
 }
 
-
-
-
-// Kestrel begin tests
-
-// Verify Kestrel function calling works
-TEST_F(KestrelTest, TestKestrelBegin) {
-    // Mock the components that Kestrel depends on
-    MockMXC6655 mockAccel;
-
-    EXPECT_CALL(mockAccel, begin())
-        .Times(1)
-        .WillOnce(::testing::Return(0));  // Return success
-
-    EXPECT_CALL(mockAccel, getAccel(2, 0))
-        .Times(1)
-        .WillOnce(::testing::Return(20.0f));  // Return success
-
-    Kestrel kestrel(&mockAccel);
-
-    bool result = kestrel.zeroAccel(false); // Reset accelerometer offsets
+// Test platform interfaces in Kestrel
+TEST_F(KestrelTest, TestKestrelPlatformInteractions) {
+    // Set up expectations for the Kestrel constructor and begin method
+    EXPECT_CALL(mockWire, begin()).Times(1);
+    EXPECT_CALL(mockWire, setClock(400000)).Times(1);
+    EXPECT_CALL(mockSystem, on(IEventType::TIME_CHANGED, ::testing::_)).Times(1);
+    EXPECT_CALL(mockSystem, on(IEventType::OUT_OF_MEMORY, ::testing::_)).Times(1);
+    EXPECT_CALL(mockSystem, resetReason()).WillOnce(::testing::Return(IResetReason::POWER_DOWN));
     
-    // Verify the result and state
-    EXPECT_FALSE(result);
+    // Additional expectations for hardware components would go here
+    // but we can't easily mock them without refactoring Kestrel
+    
+    // Create a Kestrel instance with our mocked platform interfaces
+    Kestrel kestrel = createKestrel();
+    
+    // This would initialize Kestrel, but we can't fully test it without hardware component mocks
+    // bool criticalFault = false;
+    // bool fault = false;
+    // String result = kestrel.begin(0, criticalFault, fault);
+    
+    // Instead, we can test isolated methods that primarily use platform interfaces
+    // For example, methods that use timeProvider, gpio, etc.
 }
 
-    // Verify Kestrel begin thows error with reset reason if init is not done
+// Test platform ITimeProvider interactions
+TEST_F(KestrelTest, TestKestrelTimeOperations) {
+    // Set up expectations
+    EXPECT_CALL(mockTimeProvider, now())
+        .WillOnce(::testing::Return(1585699200)); // April 1, 2020
+        
+    // Create Kestrel instance (note: this doesn't test begin())
+    Kestrel kestrel = createKestrel();
+    
+    // Test getTime() which should use mockTimeProvider
+    time_t time = kestrel.getTime();
+    EXPECT_EQ(time, 1585699200);
+}
 
-    // Verify Kestrel begin sets criticalFault tue if ioOb.begin() fails
+// Test GPIO interactions
+TEST_F(KestrelTest, TestKestrelGpioOperations) {
+    // Set up expectations
+    EXPECT_CALL(mockGpio, pinMode(Pins::WD_HOLD, IPinMode::OUTPUT)).Times(1);
+    EXPECT_CALL(mockGpio, digitalWrite(Pins::WD_HOLD, 1)).Times(1);
+    
+    // Create Kestrel instance
+    Kestrel kestrel = createKestrel();
+    
+    // Test feedWDT which should use mockGpio
+    bool result = kestrel.feedWDT();
+    EXPECT_TRUE(result);
+}
 
-    // Verify Kestrel begin sets criticalFault true if ioTalon.begin() fails
+// More tests would be added to cover other Kestrel methods
+// that interact with the platform interfaces we've mocked
 
-    // Verify Kestrel begin sets criticalFault true if csaAlpha.begin() fails TODO: NOT IMPLEMENTED
+/*
+// Remaining test outline (commented out since we can't fully implement these yet)
 
-    // Verify Kestrel begin sets criticalFault true if csaBeta.begin() fails TODO: NOT IMPLEMENTED
+// Kestrel begin tests
+// Verify Kestrel begin throws error with reset reason if init is not done
+// Verify Kestrel begin sets criticalFault true if ioOb.begin() fails
+// Verify Kestrel begin sets criticalFault true if ioTalon.begin() fails
+// Verify Kestrel begin sets criticalFault true if csaAlpha.begin() fails
+// Verify Kestrel begin sets criticalFault true if csaBeta.begin() fails
+// Verify Kestrel begin sets criticalFault true if led.begin() fails
+// Verify Kestrel Begin sets led functions if init is not done
+// Verify Kestrel begin sets criticalFault true if rtc.begin() fails
+// Verify Kestel begin sets criticalFault true if gps.begin() fails
+// Verify Kestrel begin sets initDone true if init is done
 
-    // Verify Kestrel begin sets criticalFault true if led.begin() fails TODO: NOT IMPLEMENTED
-
-    // Verify Kestrel Begin sets led functions if init is not done
-
-    // Verify Kestrel begin sets criticalFault true if rtc.begin() fails
-
-    // Verify Kestel begin sets criticalFault true if gps.begin() fails
-
-    // Verify Kestrel begin sets initDone true if init is done
-
-//Kestrel getErrors tests
-
-//Kestrel getData tests
-
-//Kestrel getMetadata tests
-
-//Kestrel selfDiagnostic tests
-
-//Kestrel updateLocation tests
-
-//Kestrel connectToCell tests
-
-//Kestrel enablePower tests
-
-//Kestrel enableData tests
-
-//Kestrel setDirection tests
-
-//Kestrel getFault tests
-
-//Kestrel enableI2C_OB tests
-
-//Kestrel enableI2C_Global tests
-
-//Kestrel enableI2C_External tests
-
-//Kestrel enableSD tests
-
-//Kestrel sdInserted tests
-
-//Kestrel enableAuxPower tests
-
-//Kestrel getTime tests
-
-//Kestrel syncTime tests
-
-//Kestrel startTimer tests
-
-//Kestrel waitUntilTimerDone tests
-
-//Kestrel getTimeString tests
-
-//kestrel totalErrors tests
-
-//Kestrel statLED tests
-
-//Kestrel setIndicatorState tests
-
-//Kestrel updateTime tests
-
-//Kestrel feedWDT tests
-
-//Kestrel releaseWDT tests
-
-//Kestrel getPosLat tests
-
-//Kestrel getPosLong tests
-
-//Kestrel getPosAlt tests
-
-//Kestrel getPosTime tests
-
-//Kestrel getPosTimeString tests
-
-//Kestrel configTalonSense tests
-
-//Kestrel getMessageID tests
-
-//Kestrel testForBat tests
-
-//Kestrel zeroAccel tests
-
-
+// Kestrel getErrors tests
+// Kestrel getData tests
+// Kestrel getMetadata tests
+// Kestrel selfDiagnostic tests
+// Kestrel updateLocation tests
+// Kestrel connectToCell tests
+// Kestrel enablePower tests
+// Kestrel enableData tests
+// Kestrel setDirection tests
+// Kestrel getFault tests
+// Kestrel enableI2C_OB tests
+// Kestrel enableI2C_Global tests
+// Kestrel enableI2C_External tests
+// Kestrel enableSD tests
+// Kestrel sdInserted tests
+// Kestrel enableAuxPower tests
+// Kestrel getTime tests
+// Kestrel syncTime tests
+// Kestrel startTimer tests
+// Kestrel waitUntilTimerDone tests
+// Kestrel getTimeString tests
+// Kestrel totalErrors tests
+// Kestrel statLED tests
+// Kestrel setIndicatorState tests
+// Kestrel updateTime tests
+// Kestrel feedWDT tests
+// Kestrel releaseWDT tests
+// Kestrel getPosLat tests
+// Kestrel getPosLong tests
+// Kestrel getPosAlt tests
+// Kestrel getPosTime tests
+// Kestrel getPosTimeString tests
+// Kestrel configTalonSense tests
+// Kestrel getMessageID tests
+// Kestrel testForBat tests
+// Kestrel zeroAccel tests
+*/

@@ -131,3 +131,6 @@
 [submodule "lib/FlightControl-platform-dependencies"]
 	path = lib/FlightControl-platform-dependencies
 	url = https://github.com/gemsiot/FlightControl-platform-dependencies.git
+[submodule "lib/FlightControl-hardware-dependencies"]
+	path = lib/FlightControl-hardware-dependencies
+	url = https://github.com/gemsiot/FlightControl-hardware-dependencies

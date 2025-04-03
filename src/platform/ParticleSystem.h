@@ -12,6 +12,7 @@ public:
     void on(IEventType event, SystemEventHandler handler) override;
     IResetReason resetReason() override;
     uint32_t freeMemory() override;
+    bool waitForCondition(std::function<bool()> condition, std::chrono::milliseconds timeout) override;
 
     // Updated sleep signature to use ISleepConfig from the interface
     IWakeupReason sleep(const ISleepConfig& config) override;

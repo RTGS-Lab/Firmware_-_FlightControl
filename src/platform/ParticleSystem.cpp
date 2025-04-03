@@ -57,6 +57,11 @@ uint32_t ParticleSystem::freeMemory() {
     return System.freeMemory();
 }
 
+bool ParticleSystem::waitForCondition(std::function<bool()> condition, std::chrono::milliseconds timeout) {
+    // Use Particle's System.waitCondition() instead of the waitFor macro
+    return System.waitCondition([&condition]{ return condition(); }, timeout.count());
+}
+
 // *** Updated sleep implementation ***
 IWakeupReason ParticleSystem::sleep(const ISleepConfig& iConfig) {
     // 1. Create the Particle-specific configuration object
@@ -95,7 +100,6 @@ IWakeupReason ParticleSystem::sleep(const ISleepConfig& iConfig) {
              case IInterruptMode::FALLING: particleInterruptMode = FALLING; break;
              case IInterruptMode::RISING:  particleInterruptMode = RISING; break;
              case IInterruptMode::CHANGE:  particleInterruptMode = CHANGE; break;
-             case IInterruptMode::NONE:
              default:
                  Log.error("Unsupported IInterruptMode for wake pin %u, defaulting to CHANGE.", iConfig.wakePin);
                  particleInterruptMode = CHANGE; // Default?

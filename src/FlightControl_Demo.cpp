@@ -66,6 +66,8 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "platform/ParticleCloud.h"
 #include "platform/ParticleSerial.h"
 
+#include "hardware/IOExpanderPCAL9535A.h"
+
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
 
@@ -82,6 +84,9 @@ ParticleCloud realCloud;
 ParticleUSBSerial realSerialDebug;
 ParticleHardwareSerial realSerialSdi12;
 
+IOExpanderPCAL9535A realIoOB(0x20); //0x20 is the PCAL Base address
+IOExpanderPCAL9535A realIoTalon(0x20);
+
 Kestrel logger(realTimeProvider, 
 			   realGpio,
 			   realSystem,
@@ -89,14 +94,16 @@ Kestrel logger(realTimeProvider,
 			   realCloud,
 			   realSerialDebug,
 			   realSerialSdi12,
+			   realIoOB,
+			   realIoTalon,
 			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
 I2CTalon i2c(0, 0x21); //Instantiate I2C talon with alt - null port and hardware v2.1
 SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and hardware v1.4
-PCAL9535A ioAlpha(0x20);
-PCAL9535A ioBeta(0x21);
+IOExpanderPCAL9535A ioAlpha(0x20);
+IOExpanderPCAL9535A ioBeta(0x21);
 
 String globalNodeID = ""; //Store current node ID
 

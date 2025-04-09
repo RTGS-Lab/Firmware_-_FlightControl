@@ -67,6 +67,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "platform/ParticleSerial.h"
 
 #include "hardware/IOExpanderPCAL9535A.h"
+#include "hardware/SDI12TalonAdapter.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -85,7 +86,7 @@ ParticleUSBSerial realSerialDebug;
 ParticleHardwareSerial realSerialSdi12;
 
 IOExpanderPCAL9535A realIoOB(0x20); //0x20 is the PCAL Base address
-IOExpanderPCAL9535A realIoTalon(0x20);
+IOExpanderPCAL9535A realIoTalon(0x21);
 
 Kestrel logger(realTimeProvider, 
 			   realGpio,
@@ -102,6 +103,7 @@ Gonk battery(5); //Instantiate with defaults, manually set to port 5
 AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
 I2CTalon i2c(0, 0x21); //Instantiate I2C talon with alt - null port and hardware v2.1
 SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and hardware v1.4
+SDI12TalonAdapter realSdi12(sdi12);
 IOExpanderPCAL9535A ioAlpha(0x20);
 IOExpanderPCAL9535A ioBeta(0x21);
 
@@ -143,10 +145,10 @@ TDR315H soil2(sdi12, 0, 0); //Instantiate soil sensor with default ports and unk
 TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
 Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
 // T9602 humidity(0, 0, 0x00); //Instantiate Telair T9602 with default ports and version v0.0 
-LI710 et(sdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
+LI710 et(realTimeProvider, realSdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
 BaroVue10 campPressure(sdi12, 0, 0x00); // Instantiate Barovue10 with default ports and v0.0 hardware
 
-const uint8_t numSensors = 8; //Number must match the number of objects defined in `sensors` array
+const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
 
 Sensor* const sensors[numSensors] = {
 	&fileSys,
@@ -155,8 +157,8 @@ Sensor* const sensors[numSensors] = {
 	&sdi12,
 	&battery,
 	&logger, //Add sensors after this line
-	&et,
-	&haar
+	&et
+	// &haar
 	// &soil1,
 	// &apogeeSolar,
 	
@@ -1106,7 +1108,7 @@ int wakeSensors()
 	for(int s = 0; s < numSensors; s++) {
 		if(sensors[s]->getTalonPort() != 0) {
 			logger.enableData(sensors[s]->getTalonPort(), true); //Turn on data for given port
-			sensors[s]->wake(); //Wake each sensor
+			sensors[s]->wake(realTimeProvider); //Wake each sensor
 			logger.enableData(sensors[s]->getTalonPort(), false); //Turn data back off for given port
 		}
 	}

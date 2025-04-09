@@ -14,11 +14,7 @@
  // #include <Arduino.h> // Or <Particle.h>
  
  // --- Constructor ---
- IOExpanderPCAL9535A::IOExpanderPCAL9535A(int address)
-     : pcal9535a(address) // Initialize the driver instance with the address
- {
-     // Constructor body (if needed)
- }
+ IOExpanderPCAL9535A::IOExpanderPCAL9535A(int address): pcal9535a(address) {}
  
  // --- IIOExpander Interface Method Implementations ---
  

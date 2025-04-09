@@ -1,4 +1,7 @@
 # FlightControl_Demo/test/CMakeLists.txt
+#allow debugging
+set(CMAKE_BUILD_TYPE Debug)
+
 # Add GoogleTest
 add_subdirectory(external/googletest)
 
@@ -36,8 +39,12 @@ add_executable(unit_tests
     main.cpp
     
     # Kestrel tests
-    unit/Driver_-_Kestrel/Driver_-_KestrelSetupTests.cpp
-    unit/Driver_-_Kestrel/Driver_-_KestrelFunctionTests.cpp
+    #unit/Driver_-_Kestrel/KestrelTest.cpp
+    #${CMAKE_SOURCE_DIR}/lib/Driver_-_Kestrel/src/Kestrel.cpp
+    
+    # Li710 tests
+    unit/Driver_-_Li710/Li710Test.cpp
+    ${CMAKE_SOURCE_DIR}/lib/Driver_-_Li710/src/Li710.cpp
 )
 
 # Link against mocks and GoogleTest

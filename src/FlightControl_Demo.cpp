@@ -79,6 +79,7 @@ SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and ha
 PCAL9535A ioAlpha(0x20);
 PCAL9535A ioBeta(0x21);
 SDI12TalonAdapter realSdi12(sdi12);
+ParticleTimeProvider realTimeProvider;
 
 String globalNodeID = ""; //Store current node ID
 

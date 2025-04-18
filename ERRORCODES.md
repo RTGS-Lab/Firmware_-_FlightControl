@@ -181,8 +181,6 @@ Each error code is divided as follows
 | 0xA0021600 | TDR315_TEMP_OUT_OF_RANGE | Sensor is beyond operating temperature range, or the temperature sensor has been damaged | 2684491264 | 0xA00216TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
 | 0xA0023200 | TDR315_HIGH_CONDUCTIVITY | Metal touching sensor rods, remove the sensor from the very high conductivity medium | 2684498432 | 0xA00232TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
 | 0xA0026400 | TDR315_MEASURMENT_MATH_ERROR | If there are no other errors, report the Error Data value to Acclima for help | 2684511232 | 0xA00264TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
-
-
 | 0xA0040000 | BAROVUE_QUAL_RANGE | The quality metric reported by the sensor indicates intervention | 2684616704 | 0xA0040eTP | Sensor | 4 | Quality Metric | Talon | Port |  | BaroVue10.h |
 | 0xE00100F4 | SD_NOT_INSERTED | SD insertion switch has not been pushed - SD card not physically present | 3758162164 | 0xE00100F4 | System | 1 | 0 | Kestrel | SD | CD high | KestrelFileHandler.h |
 | 0xE00200FA | WDT_OFF_LEASH | WDT has not been fed, expect a reset  | 3758227706 | 0xE00200FA | System | 2 | 0 | Kestrel | Actuation  |  | Kestrel.h |

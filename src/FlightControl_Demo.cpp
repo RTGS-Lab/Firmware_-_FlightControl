@@ -96,7 +96,7 @@ namespace LogModes {
 
 /////////////////////////// BEGIN USER CONFIG ////////////////////////
 //PRODUCT_ID(18596) //Configured based on the target product, comment out if device has no product
-PRODUCT_VERSION(32) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
+PRODUCT_VERSION(33) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
 
 const int backhaulCount = 4; //Number of log events before backhaul is performed 
 const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 

@@ -69,6 +69,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "hardware/IOExpanderPCAL9535A.h"
 #include "hardware/SDI12TalonAdapter.h"
 #include "hardware/CurrentSenseAmplifierPAC1934.h"
+#include "hardware/LedPCA9634.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -92,6 +93,8 @@ IOExpanderPCAL9535A realIoTalon(0x21);
 CurrentSenseAmplifierPAC1934 realCsaAlpha(2,2,2,2,0x18);
 CurrentSenseAmplifierPAC1934 realCsaBeta(2,10,10,10,0x14);
 
+LedPCA9634 realLed(0x52);
+
 Kestrel logger(realTimeProvider, 
 			   realGpio,
 			   realSystem,
@@ -103,6 +106,7 @@ Kestrel logger(realTimeProvider,
 			   realIoTalon,
 			   realCsaAlpha,
 			   realCsaBeta,
+			   realLed,
 			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 

@@ -70,6 +70,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "hardware/SDI12TalonAdapter.h"
 #include "hardware/CurrentSenseAmplifierPAC1934.h"
 #include "hardware/LedPCA9634.h"
+#include "hardware/RtcMCP79412.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -95,6 +96,8 @@ CurrentSenseAmplifierPAC1934 realCsaBeta(2,10,10,10,0x14);
 
 LedPCA9634 realLed(0x52);
 
+RtcMCP79412 realRtc;;
+
 Kestrel logger(realTimeProvider, 
 			   realGpio,
 			   realSystem,
@@ -107,6 +110,7 @@ Kestrel logger(realTimeProvider,
 			   realCsaAlpha,
 			   realCsaBeta,
 			   realLed,
+			   realRtc,
 			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 

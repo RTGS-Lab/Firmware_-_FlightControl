@@ -51,8 +51,8 @@ public:
     bool getDateValid() override;
     bool getTimeValid() override;
     bool getTimeFullyResolved() override;
-    bool powerOffWithInterrupt(bool enableInterrupt) override;
-
+    bool powerOffWithInterrupt(uint32_t durationInMs, uint32_t wakeupSources, bool forceWhileUsb = true) override;
+    Isfe_ublox_status_e sendCommand(IUbxPacket *outgoingUBX, uint16_t maxWait) override;
 private:
     SFE_UBLOX_GNSS gps; // The concrete GPS instance
 };

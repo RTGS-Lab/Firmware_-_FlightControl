@@ -72,6 +72,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "hardware/LedPCA9634.h"
 #include "hardware/RtcMCP79412.h"
 #include "hardware/AmbientLightVEML3328.h"
+#include "hardware/GpsSFE_UBLOX_GNSS.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -96,6 +97,7 @@ CurrentSenseAmplifierPAC1934 realCsaBeta(2,10,10,10,0x14);
 LedPCA9634 realLed(0x52);
 RtcMCP79412 realRtc;
 AmbientLightVEML3328 realAls;
+GpsSFE_UBLOX_GNSS realGps;
 
 Kestrel logger(realTimeProvider, 
 			   realGpio,
@@ -111,6 +113,7 @@ Kestrel logger(realTimeProvider,
 			   realLed,
 			   realRtc,
 			   realAls,
+			   realGps,
 			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 
@@ -329,13 +332,13 @@ void setup() {
 	// fileSys.writeToSD(initDiagnostic, "Dummy.txt");
 
 	#ifndef RAPID_START  //Only do this if not rapid starting
-	while((!Particle.connected() || logger.gps.getFixType() == 0) && (millis() - startTime) < maxConnectTime) { //Wait while at least one of the remote systems is not connected 
+	while((!Particle.connected() || logger.m_gps.getFixType() == 0) && (millis() - startTime) < maxConnectTime) { //Wait while at least one of the remote systems is not connected 
 		if(Particle.connected()) {
 			logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //If cell is connected, set to PASS state
 			if(WAIT_GPS == false) break; //If not told to wait for GPS, break out after cell is connected 
 		}
-		if(logger.gps.getTimeValid() == true) {
-			if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //If you get a 2D fix or better, pass GPS 
+		if(logger.m_gps.getTimeValid() == true) {
+			if(logger.m_gps.getFixType() >= 2 && logger.m_gps.getFixType() <= 4 && logger.m_gps.getGnssFixOk()) { //If you get a 2D fix or better, pass GPS 
 				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); 
 			}
 			else {
@@ -352,7 +355,7 @@ void setup() {
 		logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::ERROR); //If cell still not connected, display error
 		// Particle.disconnect(); //DEBUG!
 	}
-	if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //Make fix report is in range and fix is OK
+	if(logger.m_gps.getFixType() >= 2 && logger.m_gps.getFixType() <= 4 && logger.m_gps.getGnssFixOk()) { //Make fix report is in range and fix is OK
 		logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); //Catches connection of GPS is second device to connect
 	}
 	else {

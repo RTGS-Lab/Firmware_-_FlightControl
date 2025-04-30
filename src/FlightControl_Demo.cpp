@@ -73,6 +73,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "hardware/RtcMCP79412.h"
 #include "hardware/AmbientLightVEML3328.h"
 #include "hardware/GpsSFE_UBLOX_GNSS.h"
+#include "hardware/HumidityTemperatureAdafruit_SHT4X.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -98,6 +99,7 @@ LedPCA9634 realLed(0x52);
 RtcMCP79412 realRtc;
 AmbientLightVEML3328 realAls;
 GpsSFE_UBLOX_GNSS realGps;
+HumidityTemperatureAdafruit_SHT4X realTempHumidity;
 
 Kestrel logger(realTimeProvider, 
 			   realGpio,
@@ -114,6 +116,7 @@ Kestrel logger(realTimeProvider,
 			   realRtc,
 			   realAls,
 			   realGps,
+			   realTempHumidity,
 			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 

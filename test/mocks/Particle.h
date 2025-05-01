@@ -10,6 +10,18 @@
 #include <cctype>
 #include <algorithm> // For std::min and std::max
 
+#define D2 2
+#define D8 8
+#define D22 22
+#define A3 3
+#define D7 7
+#define A2 2
+#define D6 6
+#define A1 1
+#define D5 5
+#define D23 23
+#define A6 6
+
 // Forward declaration
 class StringSumHelper;
 

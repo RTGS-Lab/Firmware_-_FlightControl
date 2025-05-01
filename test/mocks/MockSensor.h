@@ -15,5 +15,5 @@ class MockSensor : public Sensor {
         MOCK_METHOD(void, setSensorPort, (uint8_t port));
         MOCK_METHOD(bool, isPresent, (), (override));
         MOCK_METHOD(int, sleep, (), (override));
-        MOCK_METHOD(int, wake, (), (override));
+        MOCK_METHOD(int, wake, (ITimeProvider& timeProvider), (override));
     };

@@ -141,7 +141,7 @@ TEST_F(KestrelTest, TestMockVEML3328) {
     EXPECT_EQ(result, 1);
     
     bool state = false;
-    float value = veml.GetValue(VEML3328::Channel::Red, state);
+    float value = veml.getValue(VEML3328::Channel::Red, state);
     EXPECT_FLOAT_EQ(value, 123.45f);
 }
 

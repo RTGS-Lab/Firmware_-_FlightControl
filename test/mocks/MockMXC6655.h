@@ -8,8 +8,8 @@
  * © 2025 Regents of the University of Minnesota. All rights reserved.
  */
 
- #ifndef MOCK_ACCELEROMETER_H
- #define MOCK_ACCELEROMETER_H
+ #ifndef MOCK_MXC6655_H
+ #define MOCK_MXC6655_H
  
  #include "IAccelerometer.h"
  #include <gmock/gmock.h>
@@ -17,7 +17,7 @@
  /**
   * @brief Mock implementation of IAccelerometer for testing
   */
- class MockAccelerometer : public IAccelerometer {
+ class MockMXC6655 : public IAccelerometer {
  public:
      MOCK_METHOD(int, begin, (), (override));
      MOCK_METHOD(float, getAccel, (uint8_t axis, uint8_t range), (override));
@@ -28,4 +28,4 @@
      MOCK_METHOD(void, setOffset, (float offsetX, float offsetY, float offsetZ), (override));
  };
  
- #endif // MOCK_ACCELEROMETER_H
+ #endif // MOCK_MXC6655_H

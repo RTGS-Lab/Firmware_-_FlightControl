@@ -7,7 +7,7 @@
 
  #include "AccelerometerMXC6655.h"
 
- AccelerometerMXC6655::AccelerometerMXC6655() {
+ AccelerometerMXC6655::AccelerometerMXC6655() : accel() {
      // Default constructor, nothing to initialize here
  }
  

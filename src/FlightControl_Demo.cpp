@@ -75,6 +75,7 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "hardware/GpsSFE_UBLOX_GNSS.h"
 #include "hardware/HumidityTemperatureAdafruit_SHT4X.h"
 #include "hardware/AccelerometerMXC6655.h"
+#include "hardware/AccelerometerBMA456.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -102,6 +103,7 @@ AmbientLightVEML3328 realAls;
 GpsSFE_UBLOX_GNSS realGps;
 HumidityTemperatureAdafruit_SHT4X realTempHumidity;
 AccelerometerMXC6655 realAccel;
+AccelerometerBMA456 realBackupAccel;
 
 Kestrel logger(realTimeProvider, 
 			   realGpio,
@@ -120,6 +122,7 @@ Kestrel logger(realTimeProvider,
 			   realGps,
 			   realTempHumidity,
 			   realAccel,
+			   realBackupAccel,
 			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 

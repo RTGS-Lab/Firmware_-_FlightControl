@@ -52,12 +52,44 @@
  // --- Specific Features ---
  
 
- int IOExpanderPCAL9535A::pinSetDriveStrength(int Pin, DriveStrength State, bool Port) {
-     return pcal9535a.pinSetDriveStrength(Pin, State, Port);
+ int IOExpanderPCAL9535A::pinSetDriveStrength(int Pin, IDriveStrength State, bool Port) {
+    DriveStrength realState;
+    switch(State)
+    {
+        case DRIVE_STRENGTH_DEFAULT:
+            //realState = DriveStrength::DEFAULT; //commented out because of macro overlapping
+            //break;
+        case DRIVE_STRENGTH_HIGH:
+            realState = DriveStrength::HIGH;
+            break;
+        case DRIVE_STRENGTH_STANDARD:
+            realState = DriveStrength::STANDARD;
+            break;
+        default:
+            realState = DriveStrength::STANDARD;
+            break;
+    } 
+    return pcal9535a.pinSetDriveStrength(Pin, realState, Port);
  }
  
- int IOExpanderPCAL9535A::pinSetDriveStrength(int Pin, DriveStrength State) {
-     return pcal9535a.pinSetDriveStrength(Pin, State);
+ int IOExpanderPCAL9535A::pinSetDriveStrength(int Pin, IDriveStrength State) {
+    DriveStrength realState;
+    switch(State)
+    {
+        case DRIVE_STRENGTH_DEFAULT:
+            //realState = DriveStrength::DEFAULT; //commented out because of macro overlapping
+            //break;
+        case DRIVE_STRENGTH_HIGH:
+            realState = DriveStrength::HIGH;
+            break;
+        case DRIVE_STRENGTH_STANDARD:
+            realState = DriveStrength::STANDARD;
+            break;
+        default:
+            realState = DriveStrength::STANDARD;
+            break;
+    }  
+    return pcal9535a.pinSetDriveStrength(Pin, realState);
  }
  
  

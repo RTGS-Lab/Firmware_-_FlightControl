@@ -9,6 +9,10 @@
 #include <cstdlib>
 #include <cctype>
 #include <algorithm> // For std::min and std::max
+#include <cmath>     // For isnan
+#include <chrono>    // For time literals
+
+using namespace std::chrono_literals; // For 20min, 30s literals
 
 #define D2 2
 #define D8 8
@@ -21,6 +25,20 @@
 #define D5 5
 #define D23 23
 #define A6 6
+
+// Hex formatting
+#define HEX (unsigned char)16
+// Make min and isnan available in global namespace for compatibility
+using std::min;
+using std::isnan;
+
+// Time change event values
+#define time_changed_sync 1
+#define time_changed_manually 2
+
+#define PLATFORM_BSOM 0
+#define PLATFORM_B5SOM 1
+#define PLATFORM_ID 0 
 
 // Forward declaration
 class StringSumHelper;
@@ -62,9 +80,50 @@ public:
         *this = String(buf);
     }
     
+    // Make these unambiguous by ensuring the second parameter type is always distinct
     explicit String(float value, int decimalPlaces = 2) {
         char buf[33];
         snprintf(buf, sizeof(buf), "%.*f", decimalPlaces, value);
+        *this = String(buf);
+    }
+    
+    // Add constructor for double
+    explicit String(double value, int decimalPlaces = 2) {
+        char buf[33];
+        snprintf(buf, sizeof(buf), "%.*f", decimalPlaces, value);
+        *this = String(buf);
+    }
+    
+    // Add constructor for unsigned long
+    explicit String(unsigned long value, unsigned char base = 10) {
+        char buf[33];
+        if (base == 16) {
+            snprintf(buf, sizeof(buf), "%lx", value);
+        } else {
+            snprintf(buf, sizeof(buf), "%lu", value);
+        }
+        *this = String(buf);
+    }
+    
+    // Add constructor for long
+    explicit String(long value, unsigned char base = 10) {
+        char buf[33];
+        if (base == 16) {
+            snprintf(buf, sizeof(buf), "%lx", value);
+        } else {
+            snprintf(buf, sizeof(buf), "%ld", value);
+        }
+        *this = String(buf);
+    }
+    
+    // Add constructor for uint32_t explicitly
+    explicit String(uint32_t value, unsigned char base = 10) {
+        char buf[33];
+        if (base == 16) {
+            snprintf(buf, sizeof(buf), "%x", value);
+        } else {
+            snprintf(buf, sizeof(buf), "%u", value);
+        }
         *this = String(buf);
     }
     
@@ -252,6 +311,22 @@ public:
         if (found == nullptr) return -1;
         return found - _buffer;
     }
+    
+    // Add endsWith method
+    bool endsWith(const String &suffix) const {
+        if (!_buffer || !suffix._buffer) return false;
+        if (suffix._length > _length) return false;
+        
+        return (strcmp(_buffer + (_length - suffix._length), suffix._buffer) == 0);
+    }
+    
+    bool endsWith(const char *suffix) const {
+        if (!_buffer || !suffix) return false;
+        size_t suffix_len = strlen(suffix);
+        if (suffix_len > _length) return false;
+        
+        return (strcmp(_buffer + (_length - suffix_len), suffix) == 0);
+    }
 
     void toCharArray(char *buf, unsigned int bufsize, unsigned int index = 0) const {
         if (buf == nullptr || bufsize == 0) {
@@ -396,6 +471,53 @@ inline StringSumHelper operator + (const String &lhs, int num) {
     StringSumHelper result(lhs);
     result += num;
     return result;
+}
+
+// Mock EEPROM class
+class EEPROMClass {
+public:
+    template<typename T>
+    void get(int address, T& value) {
+        // Simple mock implementation - just provide default values
+        value = T();
+    }
+    
+    template<typename T>
+    void put(int address, const T& value) {
+        // Mock implementation - doesn't actually store anything
+    }
+};
+
+// Global EEPROM instance - use inline to avoid multiple definition errors
+inline EEPROMClass EEPROM;
+
+// Mock RGB LED control
+class RGBClass {
+public:
+    void control(bool controlEnabled) {
+        // Mock implementation - doesn't do anything
+    }
+    
+    void color(int r, int g, int b) {
+        // Mock implementation - doesn't do anything
+    }
+};
+
+// Global RGB instance - use inline to avoid multiple definition errors
+inline RGBClass RGB;
+
+// Mock HAL functions
+inline uint32_t HAL_RNG_GetRandomNumber() {
+    return rand(); // Simple mock implementation
+}
+
+// Mock functions for floating point control register
+inline int __get_FPSCR() {
+    return 0; // Mock implementation
+}
+
+inline void __set_FPSCR(int value) {
+    // Mock implementation - doesn't do anything
 }
 
 #endif // MOCK_PARTICLE_H

@@ -32,6 +32,7 @@
      MOCK_METHOD(int, enableAlarm, (bool State, bool AlarmNum), (override));
      MOCK_METHOD(int, clearAlarm, (bool AlarmNum), (override));
      MOCK_METHOD(bool, readAlarm, (bool AlarmNum), (override));
+     MOCK_METHOD(String, getUUIDString, (), (override));
      MOCK_METHOD(uint8_t, readByte, (int Reg), (override));
      MOCK_METHOD(uint8_t, getErrorsArray, (uint32_t errors[]), (override));
      MOCK_METHOD(int, throwError, (uint32_t error), (override));

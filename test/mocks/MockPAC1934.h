@@ -20,7 +20,7 @@ public:
     MOCK_METHOD(bool, begin, (), (override));
     MOCK_METHOD(bool, setAddress, (uint8_t addr), (override));
     MOCK_METHOD(bool, enableChannel, (uint8_t channel, bool state), (override));
-    MOCK_METHOD(bool, setFrequency, (uint8_t frequency), (override));
+    MOCK_METHOD(bool, setFrequency, (uint16_t frequency), (override));
     MOCK_METHOD(int, getFrequency, (), (override));
 
     // Measurement direction

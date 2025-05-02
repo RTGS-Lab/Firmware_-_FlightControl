@@ -25,9 +25,9 @@
  
      // Mock methods
      MOCK_METHOD(bool, begin, (), (override));
-     MOCK_METHOD(void, setPrecision, (ht_precision_t prec), (override));
-     MOCK_METHOD(ht_precision_t, getPrecision, (), (override));
-     MOCK_METHOD(bool, getEvent, (sensors_event_t *humidity, sensors_event_t *temp), (override));
+     MOCK_METHOD(void, setPrecision, (Iht_precision_t prec), (override));
+     MOCK_METHOD(Iht_precision_t, getPrecision, (), (override));
+     MOCK_METHOD(bool, getEvent, (Isensors_event_t *humidity, Isensors_event_t *temp), (override));
  };
  
  #endif // MOCK_ADAFRUIT_SHT4X_H

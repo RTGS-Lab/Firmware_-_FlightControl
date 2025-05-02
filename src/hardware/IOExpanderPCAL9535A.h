@@ -25,8 +25,8 @@ class IOExpanderPCAL9535A : public IIOExpander {
         int digitalRead(int Pin) override;
 
         // Specific Features
-        int pinSetDriveStrength(int Pin, DriveStrength State, bool Port) override;
-        int pinSetDriveStrength(int Pin, DriveStrength State) override;
+        int pinSetDriveStrength(int Pin, IDriveStrength State, bool Port) override;
+        int pinSetDriveStrength(int Pin, IDriveStrength State) override;
 
         int setInterrupt(int Pin, bool State, bool Port) override;
         int setInterrupt(int Pin, bool State) override;

@@ -311,7 +311,6 @@ public:
         if (found == nullptr) return -1;
         return found - _buffer;
     }
-<<<<<<< HEAD
     
     // Add endsWith method
     bool endsWith(const String &suffix) const {
@@ -328,8 +327,6 @@ public:
         
         return (strcmp(_buffer + (_length - suffix_len), suffix) == 0);
     }
-=======
->>>>>>> master
 
     void toCharArray(char *buf, unsigned int bufsize, unsigned int index = 0) const {
         if (buf == nullptr || bufsize == 0) {
@@ -476,7 +473,6 @@ inline StringSumHelper operator + (const String &lhs, int num) {
     return result;
 }
 
-<<<<<<< HEAD
 // Mock EEPROM class
 class EEPROMClass {
 public:
@@ -525,6 +521,3 @@ inline void __set_FPSCR(int value) {
 }
 
 #endif // MOCK_PARTICLE_H
-=======
-#endif // MOCK_PARTICLE_H
->>>>>>> master

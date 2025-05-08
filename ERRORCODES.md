@@ -174,6 +174,13 @@ Each error code is divided as follows
 | 0x900200F0 | OVERSIZE_PACKET | Attempt to write packet to FRAM in excess of max allowable packet size | 2416050416 | 0x900200F0 | Math/Logical | 2 | 0 | Kestrel | System Wide |  | KestrelFileHandler.h |
 | 0xA0010000 | LI710_ERROR | LI710 reports a failure - attention likely needed | 2684420096 | 0xA001eeTP | Sensor | 1 | Sensor Error Code | Talon | Port | | Li710.h
 | 0xA0020000 | TDR315_ERROR | TDR315 reports a failure | 2684485632 | 0xA002eeTP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
+| 0xA0020100 | TDR315_INCIDENT_WAVE_STARTS_HIGH | Waveform error, possible dead sensor | 2684485888 | 0xA00201TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
+| 0xA0020200 | TDR315_INCIDENT_WAVE_DOESN'T_RISE | Waveform error. Check for conductivity problems | 2684486144 | 0xA00202TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
+| 0xA0020400 | TDR315_IDLE_VOLTAGE | The input voltage is not within operating parameters when the sensor is idle | 2684486656 | 0xA00204TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
+| 0xA0020800 | TDR315_ACTIVE_VOLTAGE | The input voltage is not within operating parameters when the sensor is active | 2684487680 | 0xA00208TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
+| 0xA0021600 | TDR315_TEMP_OUT_OF_RANGE | Sensor is beyond operating temperature range, or the temperature sensor has been damaged | 2684491264 | 0xA00216TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
+| 0xA0023200 | TDR315_HIGH_CONDUCTIVITY | Metal touching sensor rods, remove the sensor from the very high conductivity medium | 2684498432 | 0xA00232TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
+| 0xA0026400 | TDR315_MEASURMENT_MATH_ERROR | If there are no other errors, report the Error Data value to Acclima for help | 2684511232 | 0xA00264TP | Sensor | 2 | Sensor Error Code | Talon | Port | | TDR315H.h |
 | 0xA0040000 | BAROVUE_QUAL_RANGE | The quality metric reported by the sensor indicates intervention | 2684616704 | 0xA0040eTP | Sensor | 4 | Quality Metric | Talon | Port |  | BaroVue10.h |
 | 0xE00100F4 | SD_NOT_INSERTED | SD insertion switch has not been pushed - SD card not physically present | 3758162164 | 0xE00100F4 | System | 1 | 0 | Kestrel | SD | CD high | KestrelFileHandler.h |
 | 0xE00200FA | WDT_OFF_LEASH | WDT has not been fed, expect a reset  | 3758227706 | 0xE00200FA | System | 2 | 0 | Kestrel | Actuation  |  | Kestrel.h |

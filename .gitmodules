@@ -1,15 +1,15 @@
 [submodule "lib/Driver_-_Talon-Auxiliary"]
 	path = lib/Driver_-_Talon-Auxiliary
-	url = https://github.com/gemsiot/Driver_-_Talon-Auxiliary.git
+	url = https://github.com/RTGS-Lab/Driver_-_Talon-Auxiliary.git
 [submodule "lib/PCAL9535A_Library"]
 	path = lib/PCAL9535A_Library
-	url = https://github.com/gemsiot/PCAL9535A_Library.git
+	url = https://github.com/RTGS-Lab/PCAL9535A_Library.git
 [submodule "lib/Driver_-_Kestrel-FileHandler"]
 	path = lib/Driver_-_Kestrel-FileHandler
-	url = https://github.com/gemsiot/Driver_-_Kestrel-FileHandler.git
+	url = https://github.com/RTGS-Lab/Driver_-_Kestrel-FileHandler.git
 [submodule "lib/Driver_-_Kestrel"]
 	path = lib/Driver_-_Kestrel
-	url = https://github.com/gemsiot/Driver_-_Kestrel.git
+	url = https://github.com/RTGS-Lab/Driver_-_Kestrel.git
 [submodule "lib/SdFat"]
 	path = lib/SdFat
 	url = https://github.com/greiman/SdFat.git
@@ -18,7 +18,7 @@
 	url = https://github.com/rickkas7/MB85RC256V-FRAM-RK.git
 [submodule "lib/Driver_-_Talon-I2C"]
 	path = lib/Driver_-_Talon-I2C
-	url = https://github.com/gemsiot/Driver_-_Talon-I2C.git
+	url = https://github.com/RTGS-Lab/Driver_-_Talon-I2C.git
 [submodule "lib/MCP3421"]
 	path = lib/MCP3421
 	url = https://github.com/NorthernWidget/MCP3421.git
@@ -27,62 +27,62 @@
 	url = https://github.com/sparkfun/SparkFun_PCA9536_Arduino_Library.git
 [submodule "lib/Driver_-_Haar"]
 	path = lib/Driver_-_Haar
-	url = https://github.com/gemsiot/Driver_-_Haar.git
+	url = https://github.com/RTGS-Lab/Driver_-_Haar.git
 [submodule "lib/Driver_-_Gonk"]
 	path = lib/Driver_-_Gonk
-	url = https://github.com/gemsiot/Driver_-_Gonk.git
+	url = https://github.com/RTGS-Lab/Driver_-_Gonk.git
 [submodule "lib/Driver_-_Talon"]
 	path = lib/Driver_-_Talon
-	url = https://github.com/gemsiot/Driver_-_Talon.git
+	url = https://github.com/RTGS-Lab/Driver_-_Talon.git
 [submodule "lib/Driver_-_Sensor"]
 	path = lib/Driver_-_Sensor
-	url = https://github.com/gemsiot/Driver_-_Sensor.git
+	url = https://github.com/RTGS-Lab/Driver_-_Sensor.git
 [submodule "lib/Driver_-_Talon-SDI12"]
 	path = lib/Driver_-_Talon-SDI12
-	url = https://github.com/gemsiot/Driver_-_Talon-SDI12.git
+	url = https://github.com/RTGS-Lab/Driver_-_Talon-SDI12.git
 [submodule "lib/MCP3221"]
 	path = lib/MCP3221
-	url = https://github.com/gemsiot/MCP3221.git
+	url = https://github.com/RTGS-Lab/MCP3221.git
 [submodule "lib/Driver_-_SO421"]
 	path = lib/Driver_-_SO421
-	url = https://github.com/gemsiot/Driver_-_SO421.git
+	url = https://github.com/RTGS-Lab/Driver_-_SO421.git
 [submodule "lib/Driver_-_TEROS11"]
 	path = lib/Driver_-_TEROS11
-	url = https://github.com/gemsiot/Driver_-_TEROS11.git
+	url = https://github.com/RTGS-Lab/Driver_-_TEROS11.git
 [submodule "lib/Driver_-_SP421"]
 	path = lib/Driver_-_SP421
-	url = https://github.com/gemsiot/Driver_-_SP421.git
+	url = https://github.com/RTGS-Lab/Driver_-_SP421.git
 [submodule "lib/Adafruit_BusIO"]
 	path = lib/Adafruit_BusIO
-	url = https://github.com/gemsiot/Adafruit_BusIO.git
+	url = https://github.com/RTGS-Lab/Adafruit_BusIO.git
 [submodule "lib/Adafruit_Sensor"]
 	path = lib/Adafruit_Sensor
-	url = https://github.com/gemsiot/Adafruit_Sensor.git
+	url = https://github.com/RTGS-Lab/Adafruit_Sensor.git
 [submodule "lib/Adafruit_SHT4X"]
 	path = lib/Adafruit_SHT4X
-	url = https://github.com/gemsiot/Adafruit_SHT4X.git
+	url = https://github.com/RTGS-Lab/Adafruit_SHT4X.git
 [submodule "lib/MMC5633"]
 	path = lib/MMC5633
-	url = https://github.com/gemsiot/MMC5633.git
+	url = https://github.com/RTGS-Lab/MMC5633.git
 [submodule "lib/MXC6655"]
 	path = lib/MXC6655
-	url = https://github.com/gemsiot/MXC6655.git
+	url = https://github.com/RTGS-Lab/MXC6655.git
 [submodule "lib/Driver_-_TDR315H"]
 	path = lib/Driver_-_TDR315H
-	url = https://github.com/gemsiot/Driver_-_TDR315H.git
+	url = https://github.com/RTGS-Lab/Driver_-_TDR315H.git
 [submodule "lib/SparkFun_SCD30_Arduino_Library"]
 	path = lib/SparkFun_SCD30_Arduino_Library
 	url = https://github.com/sparkfun/SparkFun_SCD30_Arduino_Library.git
 [submodule "lib/Driver_-_Hedorah"]
-	url = https://github.com/gemsiot/Driver_-_Hedorah.git
+	url = https://github.com/RTGS-Lab/Driver_-_Hedorah.git
 	path = lib/Driver_-_Hedorah
-	url = https://github.com/gemsiot/Driver_-_Hedorah.git
+	url = https://github.com/RTGS-Lab/Driver_-_Hedorah.git
 [submodule "lib/Driver_-_T9602"]
 	path = lib/Driver_-_T9602
 	url = https://github.com/RTGS-Lab/Driver_-_T9602.git
 [submodule "lib/BMA456"]
 	path = lib/BMA456
-	url = https://github.com/gemsiot/BMA456.git
+	url = https://github.com/RTGS-Lab/BMA456.git
 [submodule "lib/Driver_-_Aleppo"]
 	path = lib/Driver_-_Aleppo
 	url = https://github.com/RTGS-Lab/Driver_-_Aleppo.git
@@ -106,25 +106,25 @@
 	url = https://github.com/RTGS-Lab/Driver_-_BaroVue10.git
 [submodule "lib/DPS368-Library-Arduino"]
 	path = lib/DPS368-Library-Arduino
-	url = https://github.com/gemsiot/DPS368-Library-Arduino.git
+	url = https://github.com/RTGS-Lab/DPS368-Library-Arduino.git
 [submodule "lib/Adafruit_SHT31"]
 	path = lib/Adafruit_SHT31
 	url = https://github.com/gems-labx/Adafruit_SHT31
 [submodule "lib/VEML3328"]
 	path = lib/VEML3328
-	url = https://github.com/gemsiot/VEML3328.git
+	url = https://github.com/RTGS-Lab/VEML3328.git
 [submodule "lib/PAC1932_Library"]
 	path = lib/PAC1932_Library
 	url = https://github.com/bschulz1701/PAC1932_Library.git
 [submodule "lib/PCA9634"]
 	path = lib/PCA9634
-	url = https://github.com/gemsiot/PCA9634.git
+	url = https://github.com/RTGS-Lab/PCA9634.git
 [submodule "lib/SparkFun_u-blox_GNSS_Arduino_Library"]
 	path = lib/SparkFun_u-blox_GNSS_Arduino_Library
 	url = https://github.com/sparkfun/SparkFun_u-blox_GNSS_Arduino_Library.git
 [submodule "lib/Driver_-_MCP79412"]
 	path = lib/Driver_-_MCP79412
-	url = https://github.com/gemsiot/Driver_-_MCP79412.git
+	url = https://github.com/RTGS-Lab/Driver_-_MCP79412.git
 [submodule "test/external/googletest"]
 	path = test/external/googletest
 	url = https://github.com/google/googletest.git

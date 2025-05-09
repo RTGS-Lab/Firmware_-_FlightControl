@@ -59,8 +59,23 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include <vector>
 #include <memory>
 
-#include "hardware/SDI12TalonAdapter.h"
 #include "platform/ParticleTimeProvider.h"
+#include "platform/ParticleGpio.h"
+#include "platform/ParticleSystem.h"
+#include "platform/ParticleWire.h"
+#include "platform/ParticleCloud.h"
+#include "platform/ParticleSerial.h"
+
+#include "hardware/IOExpanderPCAL9535A.h"
+#include "hardware/SDI12TalonAdapter.h"
+#include "hardware/CurrentSenseAmplifierPAC1934.h"
+#include "hardware/LedPCA9634.h"
+#include "hardware/RtcMCP79412.h"
+#include "hardware/AmbientLightVEML3328.h"
+#include "hardware/GpsSFE_UBLOX_GNSS.h"
+#include "hardware/HumidityTemperatureAdafruit_SHT4X.h"
+#include "hardware/AccelerometerMXC6655.h"
+#include "hardware/AccelerometerBMA456.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -70,16 +85,53 @@ const unsigned long indicatorTimeout = 60000; //Wait for up to 1 minute with ind
 const uint64_t balancedDiagnosticPeriod = 3600000; //Report diagnostics once an hour //DEBUG!
 int powerSaveMode = 0; //Default to 0, update when configure power save mode is called 
 
-Kestrel logger(true);
+ParticleTimeProvider realTimeProvider;
+ParticleGpio realGpio;
+ParticleSystem realSystem;
+ParticleWire realWire;
+ParticleCloud realCloud;
+ParticleUSBSerial realSerialDebug;
+ParticleHardwareSerial realSerialSdi12;
+
+IOExpanderPCAL9535A realIoOB(0x20); //0x20 is the PCAL Base address
+IOExpanderPCAL9535A realIoTalon(0x21);
+CurrentSenseAmplifierPAC1934 realCsaAlpha(2,2,2,2,0x18);
+CurrentSenseAmplifierPAC1934 realCsaBeta(2,10,10,10,0x14);
+LedPCA9634 realLed(0x52);
+RtcMCP79412 realRtc;
+AmbientLightVEML3328 realAls;
+GpsSFE_UBLOX_GNSS realGps;
+HumidityTemperatureAdafruit_SHT4X realTempHumidity;
+AccelerometerMXC6655 realAccel;
+AccelerometerBMA456 realBackupAccel;
+
+Kestrel logger(realTimeProvider, 
+			   realGpio,
+			   realSystem,
+			   realWire,
+			   realCloud,
+			   realSerialDebug,
+			   realSerialSdi12,
+			   realIoOB,
+			   realIoTalon,
+			   realCsaAlpha,
+			   realCsaBeta,
+			   realLed,
+			   realRtc,
+			   realAls,
+			   realGps,
+			   realTempHumidity,
+			   realAccel,
+			   realBackupAccel,
+			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 
 AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
 I2CTalon i2c(0, 0x21); //Instantiate I2C talon with alt - null port and hardware v2.1
 SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and hardware v1.4
-PCAL9535A ioAlpha(0x20);
-PCAL9535A ioBeta(0x21);
 SDI12TalonAdapter realSdi12(sdi12);
-ParticleTimeProvider realTimeProvider;
+IOExpanderPCAL9535A ioAlpha(0x20);
+IOExpanderPCAL9535A ioBeta(0x21);
 
 String globalNodeID = ""; //Store current node ID
 
@@ -122,7 +174,7 @@ Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 ha
 LI710 et(realTimeProvider, realSdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
 BaroVue10 campPressure(sdi12, 0, 0x00); // Instantiate Barovue10 with default ports and v0.0 hardware
 
-const uint8_t numSensors = 7; //Number must match the number of objects defined in `sensors` array
+const uint8_t numSensors = 8; //Number must match the number of objects defined in `sensors` array
 
 Sensor* const sensors[numSensors] = {
 	&fileSys,
@@ -131,8 +183,8 @@ Sensor* const sensors[numSensors] = {
 	&sdi12,
 	&battery,
 	&logger, //Add sensors after this line
-	&et
-	// &haar,
+	&et,
+	&haar
 	// &soil1,
 	// &apogeeSolar,
 	
@@ -289,13 +341,13 @@ void setup() {
 	// fileSys.writeToSD(initDiagnostic, "Dummy.txt");
 
 	#ifndef RAPID_START  //Only do this if not rapid starting
-	while((!Particle.connected() || logger.gps.getFixType() == 0) && (millis() - startTime) < maxConnectTime) { //Wait while at least one of the remote systems is not connected 
+	while((!Particle.connected() || logger.m_gps.getFixType() == 0) && (millis() - startTime) < maxConnectTime) { //Wait while at least one of the remote systems is not connected 
 		if(Particle.connected()) {
 			logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::PASS); //If cell is connected, set to PASS state
 			if(WAIT_GPS == false) break; //If not told to wait for GPS, break out after cell is connected 
 		}
-		if(logger.gps.getTimeValid() == true) {
-			if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //If you get a 2D fix or better, pass GPS 
+		if(logger.m_gps.getTimeValid() == true) {
+			if(logger.m_gps.getFixType() >= 2 && logger.m_gps.getFixType() <= 4 && logger.m_gps.getGnssFixOk()) { //If you get a 2D fix or better, pass GPS 
 				logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); 
 			}
 			else {
@@ -312,7 +364,7 @@ void setup() {
 		logger.setIndicatorState(IndicatorLight::CELL, IndicatorMode::ERROR); //If cell still not connected, display error
 		// Particle.disconnect(); //DEBUG!
 	}
-	if(logger.gps.getFixType() >= 2 && logger.gps.getFixType() <= 4 && logger.gps.getGnssFixOk()) { //Make fix report is in range and fix is OK
+	if(logger.m_gps.getFixType() >= 2 && logger.m_gps.getFixType() <= 4 && logger.m_gps.getGnssFixOk()) { //Make fix report is in range and fix is OK
 		logger.setIndicatorState(IndicatorLight::GPS, IndicatorMode::PASS); //Catches connection of GPS is second device to connect
 	}
 	else {

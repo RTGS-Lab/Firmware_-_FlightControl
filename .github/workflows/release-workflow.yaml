@@ -69,7 +69,7 @@ jobs:
         if: steps.compile.outputs.firmware-version-updated == 'true'
         uses: ad-m/github-push-action@v0.6.0
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.ADMIN_TOKEN }}
           branch: ${{ github.ref }}
 
       - name: Create archive of target directory

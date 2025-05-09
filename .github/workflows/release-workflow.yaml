@@ -64,12 +64,23 @@ jobs:
           git commit -m "Update firmware version" -a
           echo "updated-version-sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
+      # Generate a GitHub App token using the official action
+      - name: Create GitHub App token
+        id: app-token
+        if: steps.compile.outputs.firmware-version-updated == 'true'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          # Explicitly specify contents write permission to push changes
+          permission-contents: write
+
       # When a GitHub Action pushes commits or tags, it does not trigger a new GitHub Action job
       - name: Push changes
         if: steps.compile.outputs.firmware-version-updated == 'true'
         uses: ad-m/github-push-action@v0.6.0
         with:
-          github_token: ${{ secrets.ADMIN_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}
           branch: ${{ github.ref }}
 
       - name: Create archive of target directory
@@ -120,4 +131,4 @@ jobs:
           firmware-version: ${{ needs.release.outputs.firmware-version }}
           product-id: ${{ secrets.PARTICLE_GEMS_DEMO_PRODUCT_ID }}
           title: 'Firmware v${{ needs.release.outputs.firmware-version }}'
-          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }})'
+          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }}'

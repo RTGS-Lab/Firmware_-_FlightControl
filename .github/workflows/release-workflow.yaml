@@ -33,11 +33,23 @@ jobs:
       firmware-version-updated: ${{ steps.compile.outputs.firmware-version-updated }}
       release-url: ${{ steps.release.outputs.html_url }}
     steps:
+      # Generate a GitHub App token using the official action
+      - name: Create GitHub App token
+        id: app-token
+        if: steps.compile.outputs.firmware-version-updated == 'true'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          # Explicitly specify contents write permission to push changes
+          permission-contents: write
+      
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Compile application
         id: compile
@@ -63,17 +75,6 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git commit -m "Update firmware version" -a
           echo "updated-version-sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-
-      # Generate a GitHub App token using the official action
-      - name: Create GitHub App token
-        id: app-token
-        if: steps.compile.outputs.firmware-version-updated == 'true'
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          # Explicitly specify contents write permission to push changes
-          permission-contents: write
 
       # When a GitHub Action pushes commits or tags, it does not trigger a new GitHub Action job
       - name: Push changes

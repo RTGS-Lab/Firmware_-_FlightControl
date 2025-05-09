@@ -1,0 +1,49 @@
+{
+  "config": {
+    "system": {
+      "backhaul_context": "4",
+      "log_period": "300",
+      "power_save_mode": "1",
+      "logging_mode": "0"
+    },
+    "peripherals": {
+      "filesystem": { 
+        "id": "filesystem", 
+        "enabled": true 
+      },
+      "aux": { 
+        "id": "aux", 
+        "enabled": true 
+      },
+      "i2c": { 
+        "id": "i2c", 
+        "enabled": true 
+      },
+      "sdi12": { 
+        "id": "sdi12", 
+        "enabled": true 
+      },
+      "battery": { 
+        "id": "battery", 
+        "enabled": true 
+      }
+    },
+    "sensors": {
+      "haar": { 
+        "id": "haar", 
+        "enabled": true, 
+        "port": 0, 
+        "version": "0x20" 
+      },
+      "et": {
+        "id": "et",
+        "enabled": true,
+        "port": 0
+      },
+      "logger": {
+        "id": "logger",
+        "enabled": true
+      }
+    }
+  }
+}

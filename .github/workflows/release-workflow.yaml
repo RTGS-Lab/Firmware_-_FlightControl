@@ -33,10 +33,9 @@ jobs:
       firmware-version-updated: ${{ steps.compile.outputs.firmware-version-updated }}
       release-url: ${{ steps.release.outputs.html_url }}
     steps:
-      # Generate a GitHub App token using the official action
+      # Generate a GitHub App token using the official action - UNCONDITIONALLY
       - name: Create GitHub App token
         id: app-token
-        if: steps.compile.outputs.firmware-version-updated == 'true'
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.APP_ID }}
@@ -79,10 +78,8 @@ jobs:
       # When a GitHub Action pushes commits or tags, it does not trigger a new GitHub Action job
       - name: Push changes
         if: steps.compile.outputs.firmware-version-updated == 'true'
-        uses: ad-m/github-push-action@v0.6.0
-        with:
-          github_token: ${{ steps.app-token.outputs.token }}
-          branch: ${{ github.ref }}
+        run: |
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: Create archive of target directory
         if: steps.compile.outputs.firmware-version-updated == 'true'
@@ -100,7 +97,7 @@ jobs:
           name: "Firmware v${{ steps.compile.outputs.firmware-version }}"
           tag: "v${{ steps.compile.outputs.firmware-version }}"
           commit: ${{ steps.commit.outputs.updated-version-sha || github.sha }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
   upload:
     name: Upload to Particle

@@ -33,6 +33,7 @@ int takeSample(String dummy);
 int commandExe(String command);
 int systemRestart(String resetType);
 int configurePowerSave(int desiredPowerSaveMode);
+int updateConfiguration(String configJson);
 
 #define WAIT_GPS false
 #define USE_CELL  //System attempts to connect to cell
@@ -76,6 +77,8 @@ int configurePowerSave(int desiredPowerSaveMode);
 #include "hardware/HumidityTemperatureAdafruit_SHT4X.h"
 #include "hardware/AccelerometerMXC6655.h"
 #include "hardware/AccelerometerBMA456.h"
+
+#include "configuration/ConfigurationManager.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -155,8 +158,8 @@ namespace LogModes {
 //PRODUCT_ID(18596) //Configured based on the target product, comment out if device has no product
 PRODUCT_VERSION(34) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
 
-const int backhaulCount = 4; //Number of log events before backhaul is performed 
-const unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
+int backhaulCount = 4; //Number of log events before backhaul is performed 
+unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
 int desiredPowerSaveMode = PowerSaveModes::LOW_POWER; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
 int loggingMode = LogModes::STANDARD; //Specify the type of logging mode you wish to use: STANDARD, PERFORMANCE, BALANCED, NO_LOCAL
 
@@ -193,6 +196,20 @@ Sensor* const sensors[numSensors] = {
 	// &gas,
 	// &apogeeO2,
 };
+
+// Define available sensors array (all sensors that could be enabled/disabled)
+Sensor* availableSensors[] = {
+    &fileSys,
+    &aux, 
+    &i2c,
+    &sdi12,
+    &battery,
+    &logger
+};
+const uint8_t availableSensorCount = sizeof(availableSensors) / sizeof(availableSensors[0]);
+
+// Create configuration manager
+ConfigurationManager configManager;
 /////////////////////////// END USER CONFIG /////////////////////////////////
 
 namespace PinsIO { //For Kestrel v1.1
@@ -255,6 +272,7 @@ void setup() {
   	// talons[aux.getTalonPort()] = &aux; //Place talon objects at coresponding positions in array
 	// talons[aux1.getTalonPort()] = &aux1;
 	time_t startTime = millis();
+	Particle.function("updateConfig", updateConfiguration);
 	Particle.function("nodeID", setNodeID);
 	Particle.function("findSensors", detectSensors);
 	Particle.function("findTalons", detectTalons);
@@ -312,7 +330,54 @@ void setup() {
 	// 	logger.enableData(i, false); //Turn off all data by default
 	// }
 
+	// Initialize configuration system
+	Serial.println("Initializing configuration system...");
+    
+	// Register available sensors with configuration manager
+	configManager.registerAvailableSensors(availableSensors, availableSensorCount);
+	
+
 	detectTalons();
+
+	// Load configuration from SD card if possible
+    bool configLoaded = false;
+    if (!hasCriticalError) {
+        std::string configStr = fileSys.readFromSD("config.json").c_str();
+        if (!configStr.empty()) {
+            Serial.println("Loading configuration from SD card...");
+            configLoaded = configManager.setConfiguration(configStr);
+        }
+    }
+    
+    // If no config loaded from SD, use default
+    if (!configLoaded) {
+        Serial.println("Loading default configuration...");
+        std::string defaultConfig = "{\"config\":{\"system\":{\"logPeriod\":300,\"backhaulCount\":4,\"powerSaveMode\":1,\"loggingMode\":0},\"sensors\":[";
+        
+        // Add all available sensors as enabled by default
+        for (uint8_t i = 0; i < availableSensorCount; i++) {
+            if (i > 0) defaultConfig += ",";
+            defaultConfig += "{\"type\":\"" + std::string(availableSensors[i]->getType()) + "\",\"enabled\":true}";
+        }
+        
+        defaultConfig += "]}}";
+        configManager.setConfiguration(defaultConfig);
+        
+        // Save default config to SD card
+        if (!hasCriticalError) {
+            fileSys.writeToSD(defaultConfig.c_str(), "config.json");
+        }
+    }
+    
+    // Set global variables from configuration
+    logPeriod = configManager.getLogPeriod();
+    backhaulCount = configManager.getBackhaulCount();
+    desiredPowerSaveMode = configManager.getPowerSaveMode();
+    loggingMode = configManager.getLoggingMode();
+    
+    // Apply power save mode
+    configurePowerSave(desiredPowerSaveMode);
+
 	detectSensors();
 
 	// I2C_OnBoardEn(false);	
@@ -1320,6 +1385,36 @@ int setNodeID(String nodeID)
 		globalNodeID = nodeID; //If string passed in is valid, copy it to the global value
 		return 0;
 	}
+}
+
+int updateConfiguration(String configJson) {
+    Serial.println("Updating configuration...");
+    Serial.println(configJson);
+    
+    // Convert String to std::string
+    std::string configStr = configJson.c_str();
+    
+    if (configManager.setConfiguration(configStr)) {
+        // Update global variables
+        logPeriod = configManager.getLogPeriod();
+        backhaulCount = configManager.getBackhaulCount();
+        desiredPowerSaveMode = configManager.getPowerSaveMode();
+        loggingMode = configManager.getLoggingMode();
+        
+        // Apply power save mode
+        configurePowerSave(desiredPowerSaveMode);
+        
+        // Save configuration to SD card
+        fileSys.writeToSD(configStr.c_str(), "config.json");
+        
+        // Re-initialize sensors if needed
+        // initSensors();
+        
+        return 1; // Success
+    }
+    
+    Serial.println("Failed to update configuration");
+    return -1; // Failure
 }
 
 int takeSample(String dummy)

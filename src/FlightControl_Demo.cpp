@@ -1391,6 +1391,12 @@ int updateConfiguration(String configJson) {
     Serial.println("Updating configuration...");
     Serial.println(configJson);
     
+    // Validate JSON format
+    if (configJson.indexOf("\"config\"") == -1) {
+        Serial.println("Error: Invalid configuration format. Missing 'config' element.");
+        return -2; // Invalid format
+    }
+    
     // Convert String to std::string
     std::string configStr = configJson.c_str();
     
@@ -1405,11 +1411,34 @@ int updateConfiguration(String configJson) {
         configurePowerSave(desiredPowerSaveMode);
         
         // Save configuration to SD card
-        fileSys.writeToSD(configStr.c_str(), "config.json");
+        bool saveSuccess = fileSys.writeToSD(configStr.c_str(), "config.json");
+        if (!saveSuccess) {
+            Serial.println("Warning: Failed to save configuration to SD card");
+        }
         
-        // Re-initialize sensors if needed
-        // initSensors();
+        // Reset sensors for reconfiguration
+        Serial.println("Reconfiguring sensors based on new configuration...");
         
+        // First power down all sensors to ensure clean state
+        sleepSensors();
+        
+        // Reset all sensor ports to ensure they'll be re-detected
+        for (int i = 0; i < numSensors; i++) {
+            if (sensors[i]->sensorInterface != BusType::CORE) {
+                sensors[i]->setTalonPort(0);
+                sensors[i]->setSensorPort(0);
+            }
+        }
+        
+        // Re-detect talons and sensors
+        detectTalons();
+        detectSensors();
+        
+        // Wake sensors and re-initialize them
+        wakeSensors();
+        initSensors();
+        
+        Serial.println("Configuration update complete");
         return 1; // Success
     }
     

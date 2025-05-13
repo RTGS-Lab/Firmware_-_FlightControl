@@ -43,6 +43,9 @@
      // Method to register available sensors (called once at startup)
      void registerAvailableSensors(Sensor** availableSensors, uint8_t count);
      
+     // Method to reset all sensors (clears their allocation)
+     void resetSensors();
+     
      // System configuration getters
      unsigned long getLogPeriod() const { return m_logPeriod; }
      int getBackhaulCount() const { return m_backhaulCount; }

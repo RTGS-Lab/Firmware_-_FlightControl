@@ -42,8 +42,8 @@
  }
  
  bool ConfigurationManager::setConfiguration(std::string config) {
-     // Reset the sensor pool
-     clearSensorPool();
+     // Fully reset all sensors
+     resetSensors();
      
      // Parse and apply the configuration
      return parseConfiguration(config);
@@ -140,6 +140,48 @@
      for (int i = 0; i < MAX_DYNAMIC_SENSORS; i++) {
          m_dynamicSensorInUse[i] = false;
      }
+ }
+ 
+ void ConfigurationManager::resetSensors() {
+     // Clear the sensor pool
+     clearSensorPool();
+     
+     // Reset all pre-allocated sensors (completely safe as all these objects are statically allocated)
+     m_haar.setTalonPort(0);
+     m_haar.setSensorPort(0);
+     
+     m_hedorah.setTalonPort(0);
+     m_hedorah.setSensorPort(0);
+     
+     m_t9602.setTalonPort(0);
+     m_t9602.setSensorPort(0);
+     
+     // Reset TDR315H sensors
+     for (int i = 0; i < 3; i++) {
+         m_tdr315h[i].setTalonPort(0);
+         m_tdr315h[i].setSensorPort(0);
+     }
+     
+     // Reset TEROS11 sensors
+     for (int i = 0; i < 2; i++) {
+         m_teros11[i].setTalonPort(0);
+         m_teros11[i].setSensorPort(0);
+     }
+     
+     m_li710.setTalonPort(0);
+     m_li710.setSensorPort(0);
+     
+     m_so421.setTalonPort(0);
+     m_so421.setSensorPort(0);
+     
+     m_sp421.setTalonPort(0);
+     m_sp421.setSensorPort(0);
+     
+     m_atmos22.setTalonPort(0);
+     m_atmos22.setSensorPort(0);
+     
+     m_barovue.setTalonPort(0);
+     m_barovue.setSensorPort(0);
  }
  
  bool ConfigurationManager::parseConfiguration(const std::string& configStr) {

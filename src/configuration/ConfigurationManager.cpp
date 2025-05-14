@@ -7,6 +7,7 @@
 
  #include "ConfigurationManager.h"
  #include <Particle.h>
+ #include <Kestrel.h>  // Include for numTalonPorts
  
  // External globals needed for configuration
  extern Talon* talons[];
@@ -21,6 +22,17 @@
      , m_backhaulCount(4)
      , m_powerSaveMode(1)
      , m_loggingMode(0)
+     // Initialize sensor objects with proper construction parameters
+     , m_haar(0, 0, 0x00)
+     , m_hedorah(0, 0, 0x00)
+     , m_t9602(0, 0, 0x00)
+     , m_tdr315h{sdi12, 0, 0, 0x00, sdi12, 0, 0, 0x00, sdi12, 0, 0, 0x00} // Initialize 3 TDR315H sensors
+     , m_teros11{sdi12, 0, 0, 0x00, sdi12, 0, 0, 0x00} // Initialize 2 TEROS11 sensors
+     , m_li710(realTimeProvider, sdi12, 0, 0)
+     , m_so421(sdi12, 0, 0)
+     , m_sp421(sdi12, 0, 0)
+     , m_atmos22(sdi12, 0, 0)
+     , m_barovue(sdi12, 0, 0x00)
  {
      // Initialize all sensors as not in use and not enabled
      for (int i = 0; i < MAX_TOTAL_SENSORS; i++) {
@@ -63,6 +75,31 @@
      // Sensors configuration
      config += "\"sensors\":[";
      
+     // Helper function to determine sensor type based on pointer comparison
+     auto getSensorType = [this](Sensor* sensor) -> std::string {
+         // Check core sensors first based on the order in available sensors
+         if (m_availableSensorCount > 0 && sensor == m_availableSensors[0]) return "FileSystem";
+         if (m_availableSensorCount > 1 && sensor == m_availableSensors[1]) return "Aux";
+         if (m_availableSensorCount > 2 && sensor == m_availableSensors[2]) return "I2C";
+         if (m_availableSensorCount > 3 && sensor == m_availableSensors[3]) return "SDI12";
+         if (m_availableSensorCount > 4 && sensor == m_availableSensors[4]) return "Battery";
+         if (m_availableSensorCount > 5 && sensor == m_availableSensors[5]) return "Logger";
+         
+         // Check dynamic sensors
+         if (sensor == &m_haar) return "Haar";
+         if (sensor == &m_hedorah) return "Hedorah";
+         if (sensor == &m_t9602) return "T9602";
+         for (int i = 0; i < 3; i++) if (sensor == &m_tdr315h[i]) return "TDR315H";
+         for (int i = 0; i < 2; i++) if (sensor == &m_teros11[i]) return "TEROS11";
+         if (sensor == &m_li710) return "LI710";
+         if (sensor == &m_so421) return "SO421";
+         if (sensor == &m_sp421) return "SP421";
+         if (sensor == &m_atmos22) return "ATMOS22";
+         if (sensor == &m_barovue) return "BaroVue10";
+         
+         return "Unknown"; // Fallback
+     };
+     
      bool firstSensor = true;
      // Add all enabled sensors to the configuration
      for (uint8_t i = 0; i < m_sensorCount; i++) {
@@ -70,7 +107,7 @@
          firstSensor = false;
          
          config += "{";
-         config += "\"type\":\"" + std::string(m_sensorPool[i]->getType()) + "\",";
+         config += "\"type\":\"" + getSensorType(m_sensorPool[i]) + "\",";
          config += "\"enabled\":true,";
          
          // Only include port and talonPort if they're defined (non-zero)
@@ -82,16 +119,12 @@
              config += "\"talonPort\":" + std::to_string(m_sensorPool[i]->getTalonPort()) + ",";
          }
          
-         // Add version if available
-         if (m_sensorPool[i]->getVersion() != 0) {
-             char versionHex[10];
-             snprintf(versionHex, sizeof(versionHex), "0x%X", m_sensorPool[i]->getVersion());
-             config += "\"version\":\"" + std::string(versionHex) + "\"";
-         } else {
-             // Remove trailing comma if no version
-             if (config.back() == ',') {
-                 config.pop_back();
-             }
+         // We can't determine version anymore without getVersion,
+         // so we'll remove this part
+         
+         // Remove trailing comma if present
+         if (config.back() == ',') {
+             config.pop_back();
          }
          
          config += "}";
@@ -112,7 +145,20 @@
              firstSensor = false;
              
              config += "{";
-             config += "\"type\":\"" + std::string(m_availableSensors[i]->getType()) + "\",";
+             
+             // Get type based on index in availableSensors
+             std::string type;
+             switch (i) {
+                 case 0: type = "FileSystem"; break;
+                 case 1: type = "Aux"; break;
+                 case 2: type = "I2C"; break;
+                 case 3: type = "SDI12"; break;
+                 case 4: type = "Battery"; break;
+                 case 5: type = "Logger"; break;
+                 default: type = "Unknown"; break;
+             }
+             
+             config += "\"type\":\"" + type + "\",";
              config += "\"enabled\":false";
              config += "}";
          }
@@ -279,13 +325,18 @@
  }
  
  Sensor* ConfigurationManager::findAvailableSensorByType(const std::string& type) {
-     // Search through available sensors for matching type
-     for (uint8_t i = 0; i < m_availableSensorCount; i++) {
-         if (strcmp(m_availableSensors[i]->getType(), type.c_str()) == 0) {
-             return m_availableSensors[i];
-         }
-     }
-     return nullptr;
+     // Map sensor types to indices in the available sensors array
+     // This is a workaround since the Sensor class doesn't have a getType() method
+     
+     // Core sensor types mapping to indices in availableSensors
+     if (type == "FileSystem" && m_availableSensorCount > 0) return m_availableSensors[0];
+     if (type == "Aux" && m_availableSensorCount > 1) return m_availableSensors[1];
+     if (type == "I2C" && m_availableSensorCount > 2) return m_availableSensors[2];
+     if (type == "SDI12" && m_availableSensorCount > 3) return m_availableSensors[3];
+     if (type == "Battery" && m_availableSensorCount > 4) return m_availableSensors[4];
+     if (type == "Logger" && m_availableSensorCount > 5) return m_availableSensors[5];
+     
+     return nullptr; // Type not found
  }
  
  bool ConfigurationManager::enableCoreSensor(const std::string& type) {
@@ -326,7 +377,7 @@
          if (!m_dynamicSensorInUse[0]) {
              m_haar.setTalonPort(talonPort);
              m_haar.setSensorPort(port);
-             m_haar.setVersion(version);
+             // Version is set during sensor constructor, not supported via setVersion
              m_sensorPool[m_sensorCount++] = &m_haar;
              m_dynamicSensorInUse[0] = true;
              return true;
@@ -336,7 +387,7 @@
          if (!m_dynamicSensorInUse[1]) {
              m_hedorah.setTalonPort(talonPort);
              m_hedorah.setSensorPort(port);
-             m_hedorah.setVersion(version);
+             // Version is set during sensor constructor
              m_sensorPool[m_sensorCount++] = &m_hedorah;
              m_dynamicSensorInUse[1] = true;
              return true;
@@ -346,7 +397,7 @@
          if (!m_dynamicSensorInUse[2]) {
              m_t9602.setTalonPort(talonPort);
              m_t9602.setSensorPort(port);
-             m_t9602.setVersion(version);
+             // Version is set during sensor constructor
              m_sensorPool[m_sensorCount++] = &m_t9602;
              m_dynamicSensorInUse[2] = true;
              return true;
@@ -358,7 +409,7 @@
              if (!m_dynamicSensorInUse[3 + i]) {
                  m_tdr315h[i].setTalonPort(talonPort);
                  m_tdr315h[i].setSensorPort(port);
-                 m_tdr315h[i].setVersion(version);
+                 // Version is set during sensor constructor
                  m_sensorPool[m_sensorCount++] = &m_tdr315h[i];
                  m_dynamicSensorInUse[3 + i] = true;
                  return true;
@@ -371,7 +422,7 @@
              if (!m_dynamicSensorInUse[6 + i]) {
                  m_teros11[i].setTalonPort(talonPort);
                  m_teros11[i].setSensorPort(port);
-                 m_teros11[i].setVersion(version);
+                 // Version is set during sensor constructor
                  m_sensorPool[m_sensorCount++] = &m_teros11[i];
                  m_dynamicSensorInUse[6 + i] = true;
                  return true;
@@ -382,7 +433,7 @@
          if (!m_dynamicSensorInUse[8]) {
              m_li710.setTalonPort(talonPort);
              m_li710.setSensorPort(port);
-             m_li710.setVersion(version);
+             // Version is set during sensor constructor
              m_sensorPool[m_sensorCount++] = &m_li710;
              m_dynamicSensorInUse[8] = true;
              return true;
@@ -392,7 +443,7 @@
          if (!m_dynamicSensorInUse[9]) {
              m_so421.setTalonPort(talonPort);
              m_so421.setSensorPort(port);
-             m_so421.setVersion(version);
+             // Version is set during sensor constructor
              m_sensorPool[m_sensorCount++] = &m_so421;
              m_dynamicSensorInUse[9] = true;
              return true;
@@ -402,7 +453,7 @@
          if (!m_dynamicSensorInUse[10]) {
              m_sp421.setTalonPort(talonPort);
              m_sp421.setSensorPort(port);
-             m_sp421.setVersion(version);
+             // Version is set during sensor constructor
              m_sensorPool[m_sensorCount++] = &m_sp421;
              m_dynamicSensorInUse[10] = true;
              return true;
@@ -412,7 +463,7 @@
          if (!m_dynamicSensorInUse[11]) {
              m_atmos22.setTalonPort(talonPort);
              m_atmos22.setSensorPort(port);
-             m_atmos22.setVersion(version);
+             // Version is set during sensor constructor
              m_sensorPool[m_sensorCount++] = &m_atmos22;
              m_dynamicSensorInUse[11] = true;
              return true;
@@ -422,7 +473,7 @@
          if (!m_dynamicSensorInUse[12]) {
              m_barovue.setTalonPort(talonPort);
              m_barovue.setSensorPort(port);
-             m_barovue.setVersion(version);
+             // Version is set during sensor constructor
              m_sensorPool[m_sensorCount++] = &m_barovue;
              m_dynamicSensorInUse[12] = true;
              return true;

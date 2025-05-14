@@ -91,7 +91,6 @@
      void clearSensorPool();
      bool parseConfiguration(const std::string& config);
      bool configureSensor(const std::string& type, int port, int talonPort, int version);
-     bool enableCoreSensor(const std::string& type);
      Sensor* findAvailableSensorByType(const std::string& type);
      
      // JSON parsing helpers

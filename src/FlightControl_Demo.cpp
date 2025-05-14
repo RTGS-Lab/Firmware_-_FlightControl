@@ -34,6 +34,17 @@ int commandExe(String command);
 int systemRestart(String resetType);
 int configurePowerSave(int desiredPowerSaveMode);
 int updateConfiguration(String configJson);
+void syncCoreConfiguredSensors(void);
+
+// Forward declare the types of core sensors (for configuration purposes)
+const char* const CoreSensorTypes[] = {
+    "FileSystem",
+    "Aux",
+    "I2C",
+    "SDI12",
+    "Battery",
+    "Logger"
+};
 
 #define WAIT_GPS false
 #define USE_CELL  //System attempts to connect to cell
@@ -335,6 +346,9 @@ void setup() {
     
 	// Register available sensors with configuration manager
 	configManager.registerAvailableSensors(availableSensors, availableSensorCount);
+
+	// Make sure core sensors are properly synchronized with configuration
+	syncCoreConfiguredSensors();
 	
 
 	detectTalons();
@@ -354,10 +368,12 @@ void setup() {
         Serial.println("Loading default configuration...");
         std::string defaultConfig = "{\"config\":{\"system\":{\"logPeriod\":300,\"backhaulCount\":4,\"powerSaveMode\":1,\"loggingMode\":0},\"sensors\":[";
         
-        // Add all available sensors as enabled by default
-        for (uint8_t i = 0; i < availableSensorCount; i++) {
+        const int numCoreTypes = sizeof(CoreSensorTypes) / sizeof(CoreSensorTypes[0]);
+        
+        // Add all core sensors as enabled by default
+        for (uint8_t i = 0; i < numCoreTypes; i++) {
             if (i > 0) defaultConfig += ",";
-            defaultConfig += "{\"type\":\"" + std::string(availableSensors[i]->getType()) + "\",\"enabled\":true}";
+            defaultConfig += "{\"type\":\"" + std::string(CoreSensorTypes[i]) + "\",\"enabled\":true}";
         }
         
         defaultConfig += "]}}";
@@ -1545,4 +1561,21 @@ int configurePowerSave(int desiredPowerSaveMode)
 		talonsToTest[t]->powerSaveMode = desiredPowerSaveMode; //Set power save mode for all talons
 	}
 	return 0; //DEBUG!
+}
+
+// Utility function to sync core sensors between ConfigurationManager and the main sensors array
+void syncCoreConfiguredSensors() {
+    // This function ensures the core sensors in the configuration manager
+    // have the same enabled state as the sensors in the main array
+    
+    const int numCoreTypes = sizeof(CoreSensorTypes) / sizeof(CoreSensorTypes[0]);
+    
+    // Register all core sensors with the configuration manager
+    if (configManager.getSensorCount() == 0) {
+        for (int i = 0; i < numCoreTypes; i++) {
+            configManager.enableCoreSensor(std::string(CoreSensorTypes[i]));
+        }
+    }
+    
+    Serial.println("Core sensors synchronized with configuration");
 }

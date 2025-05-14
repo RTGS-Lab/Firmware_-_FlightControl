@@ -351,11 +351,13 @@ void setup() {
     // If no config loaded from SD, use default
     if (!configLoaded) {
         Serial.println("Loading default configuration...");
-        std::string defaultConfig = "{\"config\":{\"system\":{\"logPeriod\":300,\"backhaulCount\":4,\"powerSaveMode\":1,\"loggingMode\":0},\"sensors\":[";
+        //{"config":{"system":{"logPeriod":300,"backhaulCount":4,"powerSaveMode":1,"loggingMode":0}}}
+		std::string defaultConfig = "{\"config\":{\"system\":{\"logPeriod\":300,\"backhaulCount\":4,\"powerSaveMode\":1,\"loggingMode\":0}}}";
         configManager.setConfiguration(defaultConfig);
         
         // Save default config to SD card
 		Serial.println("Saving default configuration to SD card...");
+		fileSys.clearFileFromSD("config.json");
         fileSys.writeToSD(defaultConfig.c_str(), "config.json");
     }
     
@@ -1402,6 +1404,8 @@ int updateConfiguration(String configJson) {
         configurePowerSave(desiredPowerSaveMode);
         
         // Save configuration to SD card
+		//need to clear the file before writing new config to it
+		fileSys.clearFileFromSD("config.json");
         bool saveSuccess = fileSys.writeToSD(configStr.c_str(), "config.json");
         if (!saveSuccess) {
             Serial.println("Warning: Failed to save configuration to SD card");

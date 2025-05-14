@@ -34,7 +34,7 @@ int commandExe(String command);
 int systemRestart(String resetType);
 int configurePowerSave(int desiredPowerSaveMode);
 int updateConfiguration(String configJson);
-void syncCoreConfiguredSensors(void);
+int getConfiguration(String dummy);
 
 // Forward declare the types of core sensors (for configuration purposes)
 const char* const CoreSensorTypes[] = {
@@ -165,14 +165,23 @@ namespace LogModes {
 	constexpr uint8_t NO_LOCAL = 3; //Same as standard log, but no attempt to log to SD card
 };
 
-/////////////////////////// BEGIN USER CONFIG ////////////////////////
-//PRODUCT_ID(18596) //Configured based on the target product, comment out if device has no product
-PRODUCT_VERSION(34) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
+PRODUCT_VERSION(34)
 
-int backhaulCount = 4; //Number of log events before backhaul is performed 
-unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
-int desiredPowerSaveMode = PowerSaveModes::LOW_POWER; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
-int loggingMode = LogModes::STANDARD; //Specify the type of logging mode you wish to use: STANDARD, PERFORMANCE, BALANCED, NO_LOCAL
+//global variables affected by configuration manager
+int backhaulCount;
+unsigned long logPeriod;
+int desiredPowerSaveMode;
+int loggingMode;
+
+ConfigurationManager configManager;
+// /////////////////////////// BEGIN USER CONFIG ////////////////////////
+// //PRODUCT_ID(18596) //Configured based on the target product, comment out if device has no product
+// PRODUCT_VERSION(34) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
+
+// int backhaulCount = 4; //Number of log events before backhaul is performed 
+// unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
+// int desiredPowerSaveMode = PowerSaveModes::LOW_POWER; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
+// int loggingMode = LogModes::STANDARD; //Specify the type of logging mode you wish to use: STANDARD, PERFORMANCE, BALANCED, NO_LOCAL
 
 Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
 // Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
@@ -188,7 +197,7 @@ Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 ha
 LI710 et(realTimeProvider, realSdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
 BaroVue10 campPressure(sdi12, 0, 0x00); // Instantiate Barovue10 with default ports and v0.0 hardware
 
-const uint8_t numSensors = 8; //Number must match the number of objects defined in `sensors` array
+const uint8_t numSensors = 9; //Number must match the number of objects defined in `sensors` array
 
 Sensor* const sensors[numSensors] = {
 	&fileSys,
@@ -197,31 +206,17 @@ Sensor* const sensors[numSensors] = {
 	&sdi12,
 	&battery,
 	&logger, //Add sensors after this line
-	&et,
-	&haar
-	// &soil1,
+	//&et,
+	//&haar,
+	&soil1,
 	// &apogeeSolar,
 	
-	// &soil2,
-	// &soil3,
+	&soil2,
+	&soil3,
 	// &gas,
 	// &apogeeO2,
 };
-
-// Define available sensors array (all sensors that could be enabled/disabled)
-Sensor* availableSensors[] = {
-    &fileSys,
-    &aux, 
-    &i2c,
-    &sdi12,
-    &battery,
-    &logger
-};
-const uint8_t availableSensorCount = sizeof(availableSensors) / sizeof(availableSensors[0]);
-
-// Create configuration manager
-ConfigurationManager configManager;
-/////////////////////////// END USER CONFIG /////////////////////////////////
+// /////////////////////////// END USER CONFIG /////////////////////////////////
 
 namespace PinsIO { //For Kestrel v1.1
 	constexpr uint16_t VUSB = 5;
@@ -273,7 +268,6 @@ String metadata = "";
 String data = "";
 
 void setup() {
-	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system (Talons and Sensors)
 	System.enableFeature(FEATURE_RESET_INFO); //Allows for Particle to see reason for last reset using System.resetReason();
 	if(System.resetReason() != RESET_REASON_POWER_DOWN) {
 		//DEBUG! Set safe mode 
@@ -284,14 +278,14 @@ void setup() {
 	// talons[aux1.getTalonPort()] = &aux1;
 	time_t startTime = millis();
 	Particle.function("updateConfig", updateConfiguration);
+	Particle.function("getConfig", getConfiguration);
 	Particle.function("nodeID", setNodeID);
 	Particle.function("findSensors", detectSensors);
 	Particle.function("findTalons", detectTalons);
 	Particle.function("systemRestart", systemRestart);
 	Particle.function("takeSample", takeSample);
 	Particle.function("commandExe", commandExe);
-	Serial.begin(1000000); 
-	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
+	
 	Serial.print("RESET CAUSE: "); //DEBUG!
 	Serial.println(System.resetReason()); //DEBUG!
 	bool hasCriticalError = false;
@@ -341,48 +335,28 @@ void setup() {
 	// 	logger.enableData(i, false); //Turn off all data by default
 	// }
 
-	// Initialize configuration system
-	Serial.println("Initializing configuration system...");
-    
-	// Register available sensors with configuration manager
-	configManager.registerAvailableSensors(availableSensors, availableSensorCount);
-
-	// Make sure core sensors are properly synchronized with configuration
-	syncCoreConfiguredSensors();
+	Serial.begin(1000000); 
+	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
 	
-
-	detectTalons();
-
 	// Load configuration from SD card if possible
     bool configLoaded = false;
-    if (!hasCriticalError) {
-        std::string configStr = fileSys.readFromSD("config.json").c_str();
-        if (!configStr.empty()) {
-            Serial.println("Loading configuration from SD card...");
-            configLoaded = configManager.setConfiguration(configStr);
-        }
-    }
+
+    std::string configStr = fileSys.readFromSD("config.json").c_str();
+    if (!configStr.empty()) {
+		Serial.println("Loading configuration from SD card...");
+		configLoaded = configManager.setConfiguration(configStr);
+		Serial.println(configStr.c_str());
+	}
     
     // If no config loaded from SD, use default
     if (!configLoaded) {
         Serial.println("Loading default configuration...");
         std::string defaultConfig = "{\"config\":{\"system\":{\"logPeriod\":300,\"backhaulCount\":4,\"powerSaveMode\":1,\"loggingMode\":0},\"sensors\":[";
-        
-        const int numCoreTypes = sizeof(CoreSensorTypes) / sizeof(CoreSensorTypes[0]);
-        
-        // Add all core sensors as enabled by default
-        for (uint8_t i = 0; i < numCoreTypes; i++) {
-            if (i > 0) defaultConfig += ",";
-            defaultConfig += "{\"type\":\"" + std::string(CoreSensorTypes[i]) + "\",\"enabled\":true}";
-        }
-        
-        defaultConfig += "]}}";
         configManager.setConfiguration(defaultConfig);
         
         // Save default config to SD card
-        if (!hasCriticalError) {
-            fileSys.writeToSD(defaultConfig.c_str(), "config.json");
-        }
+		Serial.println("Saving default configuration to SD card...");
+        fileSys.writeToSD(defaultConfig.c_str(), "config.json");
     }
     
     // Set global variables from configuration
@@ -392,8 +366,9 @@ void setup() {
     loggingMode = configManager.getLoggingMode();
     
     // Apply power save mode
-    configurePowerSave(desiredPowerSaveMode);
+	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system (Talons and Sensors)
 
+	detectTalons();
 	detectSensors();
 
 	// I2C_OnBoardEn(false);	
@@ -1430,29 +1405,8 @@ int updateConfiguration(String configJson) {
         bool saveSuccess = fileSys.writeToSD(configStr.c_str(), "config.json");
         if (!saveSuccess) {
             Serial.println("Warning: Failed to save configuration to SD card");
+			//add error for failed configuration save
         }
-        
-        // Reset sensors for reconfiguration
-        Serial.println("Reconfiguring sensors based on new configuration...");
-        
-        // First power down all sensors to ensure clean state
-        sleepSensors();
-        
-        // Reset all sensor ports to ensure they'll be re-detected
-        for (int i = 0; i < numSensors; i++) {
-            if (sensors[i]->sensorInterface != BusType::CORE) {
-                sensors[i]->setTalonPort(0);
-                sensors[i]->setSensorPort(0);
-            }
-        }
-        
-        // Re-detect talons and sensors
-        detectTalons();
-        detectSensors();
-        
-        // Wake sensors and re-initialize them
-        wakeSensors();
-        initSensors();
         
         Serial.println("Configuration update complete");
         return 1; // Success
@@ -1460,6 +1414,15 @@ int updateConfiguration(String configJson) {
     
     Serial.println("Failed to update configuration");
     return -1; // Failure
+}
+
+int getConfiguration(String dummy) {
+	std::string configStr = configManager.getConfiguration();
+	if (configStr.length() > 0) {
+		return 1;
+	} else {
+		return -1; 
+	}
 }
 
 int takeSample(String dummy)
@@ -1561,21 +1524,4 @@ int configurePowerSave(int desiredPowerSaveMode)
 		talonsToTest[t]->powerSaveMode = desiredPowerSaveMode; //Set power save mode for all talons
 	}
 	return 0; //DEBUG!
-}
-
-// Utility function to sync core sensors between ConfigurationManager and the main sensors array
-void syncCoreConfiguredSensors() {
-    // This function ensures the core sensors in the configuration manager
-    // have the same enabled state as the sensors in the main array
-    
-    const int numCoreTypes = sizeof(CoreSensorTypes) / sizeof(CoreSensorTypes[0]);
-    
-    // Register all core sensors with the configuration manager
-    if (configManager.getSensorCount() == 0) {
-        for (int i = 0; i < numCoreTypes; i++) {
-            configManager.enableCoreSensor(std::string(CoreSensorTypes[i]));
-        }
-    }
-    
-    Serial.println("Core sensors synchronized with configuration");
 }

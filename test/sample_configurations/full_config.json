@@ -1,0 +1,86 @@
+{
+  "config": {
+    "system": {
+      "logPeriod": 300,
+      "backhaulCount": 4,
+      "powerSaveMode": 1,
+      "loggingMode": 2
+    },
+    "sensors": [
+      {
+        "type": "FileSystem",
+        "enabled": true
+      },
+      {
+        "type": "Aux",
+        "enabled": true
+      },
+      {
+        "type": "I2C",
+        "enabled": true
+      },
+      {
+        "type": "SDI12",
+        "enabled": true
+      },
+      {
+        "type": "Battery",
+        "enabled": true
+      },
+      {
+        "type": "Logger",
+        "enabled": true
+      },
+      {
+        "type": "Haar",
+        "enabled": true,
+        "port": 1,
+        "talonPort": 1,
+        "version": "0x20"
+      },
+      {
+        "type": "Hedorah",
+        "enabled": true,
+        "port": 2,
+        "talonPort": 1,
+        "version": "0x10"
+      },
+      {
+        "type": "LI710",
+        "enabled": true,
+        "port": 1,
+        "talonPort": 3
+      },
+      {
+        "type": "TDR315H",
+        "enabled": true,
+        "port": 2,
+        "talonPort": 3
+      },
+      {
+        "type": "TDR315H",
+        "enabled": true,
+        "port": 3,
+        "talonPort": 3
+      },
+      {
+        "type": "SO421",
+        "enabled": true,
+        "port": 1,
+        "talonPort": 4
+      },
+      {
+        "type": "SP421",
+        "enabled": true,
+        "port": 2,
+        "talonPort": 4
+      },
+      {
+        "type": "ATMOS22",
+        "enabled": true,
+        "port": 3,
+        "talonPort": 4
+      }
+    ]
+  }
+}

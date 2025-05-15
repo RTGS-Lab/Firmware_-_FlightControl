@@ -21,6 +21,8 @@
      virtual ~IConfiguration() = default;
      virtual bool setConfiguration(std::string config) = 0;
      virtual std::string getConfiguration() = 0;
+     virtual int updateSystemConfigurationUid() = 0;
+     virtual int updateSensorConfigurationUid() = 0;
 };
      
  #endif // I_CONFIGURATION_H

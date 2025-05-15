@@ -34,7 +34,8 @@ int commandExe(String command);
 int systemRestart(String resetType);
 int configurePowerSave(int desiredPowerSaveMode);
 int updateConfiguration(String configJson);
-int getConfiguration(String dummy);
+int getSystemConfiguration(String dummy);
+int getSensorConfiguration(String dummy);
 
 // Forward declare the types of core sensors (for configuration purposes)
 const char* const CoreSensorTypes[] = {
@@ -173,6 +174,9 @@ unsigned long logPeriod;
 int desiredPowerSaveMode;
 int loggingMode;
 
+int systemConfigUid = 0; //Used to track the UID of the configuration file
+int sensorConfigUid = 0; //Used to track the UID of the sensor configuration file
+
 ConfigurationManager configManager;
 // /////////////////////////// BEGIN USER CONFIG ////////////////////////
 // //PRODUCT_ID(18596) //Configured based on the target product, comment out if device has no product
@@ -278,7 +282,8 @@ void setup() {
 	// talons[aux1.getTalonPort()] = &aux1;
 	time_t startTime = millis();
 	Particle.function("updateConfig", updateConfiguration);
-	Particle.function("getConfig", getConfiguration);
+	Particle.function("getSystemConfig", getSystemConfiguration);
+	Particle.function("getSensorConfig", getSensorConfiguration);
 	Particle.function("nodeID", setNodeID);
 	Particle.function("findSensors", detectSensors);
 	Particle.function("findTalons", detectTalons);
@@ -351,9 +356,52 @@ void setup() {
     // If no config loaded from SD, use default
     if (!configLoaded) {
         Serial.println("Loading default configuration...");
-        //{"config":{"system":{"logPeriod":300,"backhaulCount":4,"powerSaveMode":1,"loggingMode":0}}}
-		std::string defaultConfig = "{\"config\":{\"system\":{\"logPeriod\":300,\"backhaulCount\":4,\"powerSaveMode\":1,\"loggingMode\":0}}}";
-        configManager.setConfiguration(defaultConfig);
+		// {
+		// 	"config": {
+		// 	  "system": {
+		// 		"logPeriod": 300,
+		// 		"backhaulCount": 4,
+		// 		"powerSaveMode": 1,
+		// 		"loggingMode": 0,
+		// 		"numAuxTalons": 1,
+		// 		"numI2CTalons": 1,
+		// 		"numSDI12Talons": 1
+		// 	  },
+		// 	  "sensors": {
+		// 		"numET": 0,
+		// 		"numHaar": 0,
+		// 		"numSoil": 3,
+		// 		"numApogecSolar": 0,
+		// 		"numCO2": 0,
+		// 		"numO2": 0,
+		// 		"numPressure": 0
+		// 	  }
+		// 	}
+		//}
+		std::string defaultConfig = "{"
+		"\"config\":{"
+			"\"system\":{"
+				"\"logPeriod\":300,"
+				"\"backhaulCount\":4,"
+				"\"powerSaveMode\":1,"
+				"\"loggingMode\":0,"
+				"\"numAuxTalons\":1,"
+				"\"numI2CTalons\":1,"
+				"\"numSDI12Talons\":1"
+				"},"
+			"\"sensors\":{"
+				"\"numET\":0,"
+				"\"numHaar\":0,"
+				"\"numSoil\":3,"
+				"\"numApogecSolar\":0,"
+				"\"numCO2\":0,"
+				"\"numO2\":0,"
+				"\"numPressure\":0"
+				"}"
+			"}"
+		"}";
+		configManager.setConfiguration(defaultConfig);
+		
         
         // Save default config to SD card
 		Serial.println("Saving default configuration to SD card...");
@@ -1420,13 +1468,14 @@ int updateConfiguration(String configJson) {
     return -1; // Failure
 }
 
-int getConfiguration(String dummy) {
-	std::string configStr = configManager.getConfiguration();
-	if (configStr.length() > 0) {
-		return 1;
-	} else {
-		return -1; 
-	}
+int getSystemConfiguration(String dummy) {
+	int uid = configManager.updateSystemConfigurationUid();
+	return uid;
+}
+
+int getSensorConfiguration(String dummy) {
+	int uid = configManager.updateSensorConfigurationUid();
+	return uid;
 }
 
 int takeSample(String dummy)

@@ -28,6 +28,30 @@
      
      return config;
  }
+
+ int ConfigurationManager::updateSystemConfigurationUid() {
+    int tempUid = m_logPeriod << 16;
+    tempUid |= m_backhaulCount << 12;
+    tempUid |= m_powerSaveMode << 10;
+    tempUid |= m_loggingMode << 8;
+    tempUid |= m_numAuxTalons << 6;
+    tempUid |= m_numI2CTalons << 4;
+    tempUid |= m_numSDI12Talons << 2;
+    m_SystemConfigUid = tempUid; 
+    return m_SystemConfigUid;
+ }
+
+ int ConfigurationManager::updateSensorConfigurationUid() {
+    int tempUid = m_numET << 28;
+    tempUid |= m_numHaar << 24;
+    tempUid |= m_numSoil << 20;
+    tempUid |= m_numApogeeSolar << 16;
+    tempUid |= m_numCO2 << 12;
+    tempUid |= m_numO2 << 8;
+    tempUid |= m_numPressure << 4;
+    m_SensorConfigUid = tempUid; 
+    return m_SensorConfigUid;
+ }
  
 
  bool ConfigurationManager::parseConfiguration(const std::string& configStr) {
@@ -43,6 +67,30 @@
              m_backhaulCount = extractJsonIntField(systemJson, "backhaulCount", 4);
              m_powerSaveMode = extractJsonIntField(systemJson, "powerSaveMode", 1);
              m_loggingMode = extractJsonIntField(systemJson, "loggingMode", 0);
+             m_numAuxTalons = extractJsonIntField(systemJson, "numAuxTalons", 1);
+             m_numI2CTalons = extractJsonIntField(systemJson, "numI2CTalons", 1);
+             m_numSDI12Talons = extractJsonIntField(systemJson, "numSDI12Talons", 1);
+             
+             updateSystemConfigurationUid();
+         }
+     }
+     // Find the sensor configuration section
+     size_t sensorsStart = configStr.find("\"sensors\":{");
+     if (sensorsStart != std::string::npos) {
+         size_t sensorsEnd = findMatchingBracket(configStr, sensorsStart + 10);
+         if (sensorsEnd > 0) {
+             std::string sensorsJson = configStr.substr(sensorsStart + 10, sensorsEnd - (sensorsStart + 10));
+            
+             // Parse sensor settings
+             m_numET = extractJsonIntField(sensorsJson, "numET", 0);
+             m_numHaar = extractJsonIntField(sensorsJson, "numHaar", 0);
+             m_numSoil = extractJsonIntField(sensorsJson, "numSoil", 3);
+             m_numApogeeSolar = extractJsonIntField(sensorsJson, "numApogeeSolar", 0);
+             m_numCO2 = extractJsonIntField(sensorsJson, "numCO2", 0);
+             m_numO2 = extractJsonIntField(sensorsJson, "numO2", 0);
+             m_numPressure = extractJsonIntField(sensorsJson, "numPressure", 0);
+            
+             updateSensorConfigurationUid();
          }
      }
      

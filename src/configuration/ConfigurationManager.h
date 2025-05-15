@@ -17,6 +17,8 @@
      // IConfiguration implementation
      bool setConfiguration(std::string config) override;
      std::string getConfiguration() override;
+     int updateSystemConfigurationUid() override;
+     int updateSensorConfigurationUid() override;
      
      // System configuration getters
      unsigned long getLogPeriod() const { return m_logPeriod; }
@@ -30,7 +32,21 @@
      int m_backhaulCount;
      int m_powerSaveMode;
      int m_loggingMode;
-     
+     int m_numAuxTalons;
+     int m_numI2CTalons;
+     int m_numSDI12Talons;
+     // Sensor configuration
+     int m_numET;
+     int m_numHaar;
+     int m_numSoil;
+     int m_numApogeeSolar;
+     int m_numCO2;
+     int m_numO2;
+     int m_numPressure;
+
+     int m_SystemConfigUid; // Used to track the UID of the system configuration  
+     int m_SensorConfigUid; // Used to track the UID of the sensor configuration
+
      // Internal methods
      bool parseConfiguration(const std::string& config);
      

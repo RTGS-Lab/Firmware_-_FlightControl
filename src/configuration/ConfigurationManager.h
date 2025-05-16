@@ -25,6 +25,17 @@
      int getBackhaulCount() const { return m_backhaulCount; }
      int getPowerSaveMode() const { return m_powerSaveMode; }
      int getLoggingMode() const { return m_loggingMode; }
+     int getNumAuxTalons() const { return m_numAuxTalons; }
+     int getNumI2CTalons() const { return m_numI2CTalons; }
+     int getNumSDI12Talons() const { return m_numSDI12Talons; }
+     int getNumSoil() const { return m_numSoil; }
+     int getNumHaar() const { return m_numHaar; }
+     int getNumET() const { return m_numET; }
+     int getNumApogeeSolar() const { return m_numApogeeSolar; }
+     int getNumCO2() const { return m_numCO2; }
+     int getNumO2() const { return m_numO2; }
+     int getNumPressure() const { return m_numPressure; }
+
      
  private:
      // System configuration

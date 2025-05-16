@@ -119,6 +119,8 @@ GpsSFE_UBLOX_GNSS realGps;
 HumidityTemperatureAdafruit_SHT4X realTempHumidity;
 AccelerometerMXC6655 realAccel;
 AccelerometerBMA456 realBackupAccel;
+IOExpanderPCAL9535A ioAlpha(0x20);
+IOExpanderPCAL9535A ioBeta(0x21);
 
 Kestrel logger(realTimeProvider, 
 			   realGpio,
@@ -141,24 +143,6 @@ Kestrel logger(realTimeProvider,
 			   true);
 KestrelFileHandler fileSys(logger);
 Gonk battery(5); //Instantiate with defaults, manually set to port 5 
-AuxTalon aux(0, 0x14); //Instantiate AUX talon with deaults - null port and hardware v1.4
-I2CTalon i2c(0, 0x21); //Instantiate I2C talon with alt - null port and hardware v2.1
-SDI12Talon sdi12(0, 0x14); //Instantiate SDI12 talon with alt - null port and hardware v1.4
-SDI12TalonAdapter realSdi12(sdi12);
-IOExpanderPCAL9535A ioAlpha(0x20);
-IOExpanderPCAL9535A ioBeta(0x21);
-
-String globalNodeID = ""; //Store current node ID
-
-const uint8_t numTalons = 3; //Number must match the number of objects defined in `talonsToTest` array
-
-Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
-Talon* talonsToTest[numTalons] = {
-	&aux,
-	&i2c,
-	&sdi12
-};
-
 namespace LogModes {
 	constexpr uint8_t STANDARD = 0;
 	constexpr uint8_t PERFORMANCE = 1; 
@@ -178,49 +162,145 @@ int systemConfigUid = 0; //Used to track the UID of the configuration file
 int sensorConfigUid = 0; //Used to track the UID of the sensor configuration file
 
 ConfigurationManager configManager;
-// /////////////////////////// BEGIN USER CONFIG ////////////////////////
-// //PRODUCT_ID(18596) //Configured based on the target product, comment out if device has no product
-// PRODUCT_VERSION(34) //Configure based on the firmware version you wish to create, check product firmware page to see what is currently the highest number
 
-// int backhaulCount = 4; //Number of log events before backhaul is performed 
-// unsigned long logPeriod = 300; //Number of seconds to wait between logging events 
-// int desiredPowerSaveMode = PowerSaveModes::LOW_POWER; //Specify the power save mode you wish to use: PERFORMANCE, BALANCED, LOW_POWER, ULTRA_LOW_POWER 
-// int loggingMode = LogModes::STANDARD; //Specify the type of logging mode you wish to use: STANDARD, PERFORMANCE, BALANCED, NO_LOCAL
+constexpr uint8_t maxTalonsPerType = 3; //Maximum number of talons of each type
 
-Haar haar(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-// Haar haar1(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-// Haar haar2(0, 0, 0x20); //Instantiate Haar sensor with default ports and version v2.0
-SO421 apogeeO2(sdi12, 0, 0); //Instantiate O2 sensor with default ports and unknown version, pass over SDI12 Talon interface
-SP421 apogeeSolar(sdi12, 0, 0); //Instantiate solar sensor with default ports and unknown version, pass over SDI12 Talon interface 
-// TEROS11 soil(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-TDR315H soil1(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-TDR315H soil2(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-TDR315H soil3(sdi12, 0, 0); //Instantiate soil sensor with default ports and unknown version, pass over SDI12 Talon interface 
-Hedorah gas(0, 0, 0x10); //Instantiate CO2 sensor with default ports and v1.0 hardware
-// T9602 humidity(0, 0, 0x00); //Instantiate Telair T9602 with default ports and version v0.0 
-LI710 et(realTimeProvider, realSdi12, 0, 0); //Instantiate ET sensor with default ports and unknown version, pass over SDI12 Talon interface 
-BaroVue10 campPressure(sdi12, 0, 0x00); // Instantiate Barovue10 with default ports and v0.0 hardware
-
-const uint8_t numSensors = 9; //Number must match the number of objects defined in `sensors` array
-
-Sensor* const sensors[numSensors] = {
-	&fileSys,
-	&aux,
-	&i2c,
-	&sdi12,
-	&battery,
-	&logger, //Add sensors after this line
-	//&et,
-	//&haar,
-	&soil1,
-	// &apogeeSolar,
-	
-	&soil2,
-	&soil3,
-	// &gas,
-	// &apogeeO2,
+AuxTalon auxTalons[maxTalonsPerType] = {
+	AuxTalon(0, 0x14), //Instantiate AUX talon with deaults - null port and hardware v1.4
+	AuxTalon(0, 0x14), //Instantiate AUX talon with deaults - null port and hardware v1.4
+	AuxTalon(0, 0x14), //Instantiate AUX talon with deaults - null port and hardware v1.4
 };
-// /////////////////////////// END USER CONFIG /////////////////////////////////
+
+I2CTalon i2cTalons[maxTalonsPerType] = {
+	I2CTalon(0, 0x21), //Instantiate I2C talon with alt - null port and hardware v2.1
+	I2CTalon(0, 0x21), //Instantiate I2C talon with alt - null port and hardware v2.1
+	I2CTalon(0, 0x21) //Instantiate I2C talon with alt - null port and hardware v2.1
+};
+
+SDI12Talon sdi12Talons[maxTalonsPerType] = {
+	SDI12Talon(0, 0x14), //Instantiate SDI12 talon with alt - null port and hardware v1.4
+	SDI12Talon(0, 0x14), //Instantiate SDI12 talon with alt - null port and hardware v1.4
+	SDI12Talon(0, 0x14) //Instantiate SDI12 talon with alt - null port and hardware v1.4
+};
+
+SDI12TalonAdapter realSdi12(sdi12Talons[0]);
+
+String globalNodeID = ""; //Store current node ID
+
+const uint8_t numTalons = 3; //Number must match the number of objects defined in `talonsToTest` array
+
+Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
+Talon* talonsToTest[numTalons] = {
+	&auxTalons[0],
+	&i2cTalons[0],
+	&sdi12Talons[0]
+};
+
+constexpr uint8_t maxSensorsPerType = 7;
+
+Haar haarSensors[maxSensorsPerType] = {
+	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
+	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
+	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
+	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0	
+	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
+	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
+	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
+}; //Instantiate Haar sensors with default ports and version v2.0
+
+SO421 apogeeO2Sensors[maxSensorsPerType] = {
+	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
+	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
+	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
+	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
+	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
+	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
+	SO421(sdi12Talons[0], 0, 0) //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
+}; //Instantiate O2 sensors with default ports and unknown version
+
+SP421 apogeeSolarSensors[maxSensorsPerType] = {
+	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	SP421(sdi12Talons[0], 0, 0) //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
+}; //Instantiate solar sensors with default ports and unknown version
+
+TDR315H soilSensors[maxSensorsPerType] = {
+	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	TDR315H(sdi12Talons[0], 0, 0) //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
+}; //Instantiate soil sensors with default ports and unknown version
+
+Hedorah gasSensors[maxSensorsPerType] = {
+	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
+	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
+	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
+	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
+	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
+	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
+	Hedorah(0, 0, 0x10) //Instantiate CO2 sensors with default ports and v1.0 hardware
+}; //Instantiate CO2 sensors with default ports and v1.0 hardware
+
+T9602 humiditySensors[maxSensorsPerType] = {
+	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
+	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
+	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
+	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
+	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
+	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
+	T9602(0, 0, 0x00) //Instantiate Telair T9602 with default ports and version v0.0 
+}; //Instantiate Telair T9602 with default ports and version v1.1
+
+LI710 etSensors[maxSensorsPerType] = {
+	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
+	LI710(realTimeProvider, realSdi12, 0, 0) //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
+}; //Instantiate ET sensors with default ports and unknown version
+
+BaroVue10 pressureSensors[maxSensorsPerType] = {
+	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
+	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
+	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
+	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
+	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
+	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
+	BaroVue10(sdi12Talons[0], 0, 0x00) // Instantiate Barovue10 with default ports and v0.0 hardware
+}; // Instantiate Barovue10 with default ports and v1.1 hardware
+
+const uint8_t maxNumSensors = 17; //Number must match the number of objects defined in `sensors` array
+
+Sensor* sensors[maxNumSensors] = {
+	&fileSys,
+	&battery,
+	&logger,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr,
+	nullptr
+};
+
+int numSensors = 3;
 
 namespace PinsIO { //For Kestrel v1.1
 	constexpr uint16_t VUSB = 5;
@@ -415,6 +495,63 @@ void setup() {
     desiredPowerSaveMode = configManager.getPowerSaveMode();
     loggingMode = configManager.getLoggingMode();
     
+	int numAuxTalons = configManager.getNumAuxTalons();
+	int numI2CTalons = configManager.getNumI2CTalons();
+	int numSDI12Talons = configManager.getNumSDI12Talons();
+
+	int numSoil = configManager.getNumSoil();
+	int numHaar = configManager.getNumHaar();
+	int numET = configManager.getNumET();
+	int numApogeeSolar = configManager.getNumApogeeSolar();
+	int numCO2 = configManager.getNumCO2();
+	int numO2 = configManager.getNumO2();
+	int numPressure = configManager.getNumPressure();
+
+	int talonsIndex = 0;
+
+	for(int i = 0; i < numAuxTalons; i++) {
+		talons[talonsIndex++] = &auxTalons[i];
+		numSensors++;
+	}
+	for(int i = 0; i < numI2CTalons; i++) {
+		talons[talonsIndex++] = &i2cTalons[i];
+		numSensors++;
+	}
+	for(int i = 0; i < numSDI12Talons; i++) {
+		talons[talonsIndex++] = &sdi12Talons[i];
+		numSensors++;
+	}
+
+	int sensorsIndex = 3;
+	for(int i = 0; i < numSoil; i++) {
+		sensors[sensorsIndex++] = &soilSensors[i];
+		numSensors++;
+	}
+	for(int i = 0; i < numHaar; i++) {
+		sensors[sensorsIndex++] = &haarSensors[i];
+		numSensors++;
+	}
+	for(int i = 0; i < numET; i++) {
+		sensors[sensorsIndex++] = &etSensors[i];
+		numSensors++;
+	}
+	for(int i = 0; i < numApogeeSolar; i++) {
+		sensors[sensorsIndex++] = &apogeeSolarSensors[i];
+		numSensors++;
+	}
+	for(int i = 0; i < numCO2; i++) {
+		sensors[sensorsIndex++] = &gasSensors[i];
+		numSensors++;
+	}
+	for(int i = 0; i < numO2; i++) {
+		sensors[sensorsIndex++] = &apogeeO2Sensors[i];
+		numSensors++;
+	}
+	for(int i = 0; i < numPressure; i++) {
+		sensors[sensorsIndex++] = &pressureSensors[i];
+		numSensors++;
+	}
+
     // Apply power save mode
 	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system (Talons and Sensors)
 
@@ -1448,6 +1585,64 @@ int updateConfiguration(String configJson) {
         desiredPowerSaveMode = configManager.getPowerSaveMode();
         loggingMode = configManager.getLoggingMode();
         
+		int numAuxTalons = configManager.getNumAuxTalons();
+		int numI2CTalons = configManager.getNumI2CTalons();
+		int numSDI12Talons = configManager.getNumSDI12Talons();
+
+		int numSoil = configManager.getNumSoil();
+		int numHaar = configManager.getNumHaar();
+		int numET = configManager.getNumET();
+		int numApogeeSolar = configManager.getNumApogeeSolar();
+		int numCO2 = configManager.getNumCO2();
+		int numO2 = configManager.getNumO2();
+		int numPressure = configManager.getNumPressure();
+
+		int talonsIndex = 0;
+		int numSensors = 3; //Start at 3 since first three are file system, battery, and logger
+
+		for(int i = 0; i < numAuxTalons; i++) {
+			talons[talonsIndex++] = &auxTalons[i];
+			numSensors++;
+		}
+		for(int i = 0; i < numI2CTalons; i++) {
+			talons[talonsIndex++] = &i2cTalons[i];
+			numSensors++;
+		}
+		for(int i = 0; i < numSDI12Talons; i++) {
+			talons[talonsIndex++] = &sdi12Talons[i];
+			numSensors++;
+		}
+
+		int sensorsIndex = 3;
+		for(int i = 0; i < numSoil; i++) {
+			sensors[sensorsIndex++] = &soilSensors[i];
+			numSensors++;
+		}
+		for(int i = 0; i < numHaar; i++) {
+			sensors[sensorsIndex++] = &haarSensors[i];
+			numSensors++;
+		}
+		for(int i = 0; i < numET; i++) {
+			sensors[sensorsIndex++] = &etSensors[i];
+			numSensors++;
+		}
+		for(int i = 0; i < numApogeeSolar; i++) {
+			sensors[sensorsIndex++] = &apogeeSolarSensors[i];
+			numSensors++;
+		}
+		for(int i = 0; i < numCO2; i++) {
+			sensors[sensorsIndex++] = &gasSensors[i];
+			numSensors++;
+		}
+		for(int i = 0; i < numO2; i++) {
+			sensors[sensorsIndex++] = &apogeeO2Sensors[i];
+			numSensors++;
+		}
+		for(int i = 0; i < numPressure; i++) {
+			sensors[sensorsIndex++] = &pressureSensors[i];
+			numSensors++;
+		}
+
         // Apply power save mode
         configurePowerSave(desiredPowerSaveMode);
         

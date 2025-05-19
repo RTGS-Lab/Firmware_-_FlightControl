@@ -164,6 +164,20 @@ int sensorConfigUid = 0; //Used to track the UID of the sensor configuration fil
 
 String globalNodeID = ""; //Store current node ID
 
+ConfigurationManager configManager;
+SensorManager sensorManager(configManager);
+std::vector<Sensor*> allSensors;
+std::vector<Talon*> allTalons;
+SDI12TalonAdapter* realSdi12 = nullptr;
+namespace PinsIO { //For Kestrel v1.1
+	constexpr uint16_t VUSB = 5;
+}
+
+namespace PinsIOAlpha {
+	constexpr uint16_t I2C_EXT_EN = 10;
+	constexpr uint16_t SD_CD = 8;
+	constexpr uint16_t SD_EN = 12;
+	constexpr uint16_t AUX_EN = 15;
 	constexpr uint16_t CE = 11;
 	constexpr uint16_t LED_EN = 13;
 }

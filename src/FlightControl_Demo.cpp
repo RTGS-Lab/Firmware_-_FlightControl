@@ -91,6 +91,7 @@ const char* const CoreSensorTypes[] = {
 #include "hardware/AccelerometerBMA456.h"
 
 #include "configuration/ConfigurationManager.h"
+#include "configuration/SensorManager.h"
 
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
@@ -161,156 +162,8 @@ int loggingMode;
 int systemConfigUid = 0; //Used to track the UID of the configuration file
 int sensorConfigUid = 0; //Used to track the UID of the sensor configuration file
 
-ConfigurationManager configManager;
-
-constexpr uint8_t maxTalonsPerType = 3; //Maximum number of talons of each type
-
-AuxTalon auxTalons[maxTalonsPerType] = {
-	AuxTalon(0, 0x14), //Instantiate AUX talon with deaults - null port and hardware v1.4
-	AuxTalon(0, 0x14), //Instantiate AUX talon with deaults - null port and hardware v1.4
-	AuxTalon(0, 0x14), //Instantiate AUX talon with deaults - null port and hardware v1.4
-};
-
-I2CTalon i2cTalons[maxTalonsPerType] = {
-	I2CTalon(0, 0x21), //Instantiate I2C talon with alt - null port and hardware v2.1
-	I2CTalon(0, 0x21), //Instantiate I2C talon with alt - null port and hardware v2.1
-	I2CTalon(0, 0x21) //Instantiate I2C talon with alt - null port and hardware v2.1
-};
-
-SDI12Talon sdi12Talons[maxTalonsPerType] = {
-	SDI12Talon(0, 0x14), //Instantiate SDI12 talon with alt - null port and hardware v1.4
-	SDI12Talon(0, 0x14), //Instantiate SDI12 talon with alt - null port and hardware v1.4
-	SDI12Talon(0, 0x14) //Instantiate SDI12 talon with alt - null port and hardware v1.4
-};
-
-SDI12TalonAdapter realSdi12(sdi12Talons[0]);
-
 String globalNodeID = ""; //Store current node ID
 
-const uint8_t numTalons = 3; //Number must match the number of objects defined in `talonsToTest` array
-
-Talon* talons[Kestrel::numTalonPorts]; //Create an array of the total possible length
-Talon* talonsToTest[numTalons] = {
-	&auxTalons[0],
-	&i2cTalons[0],
-	&sdi12Talons[0]
-};
-
-constexpr uint8_t maxSensorsPerType = 7;
-
-Haar haarSensors[maxSensorsPerType] = {
-	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
-	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
-	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
-	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0	
-	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
-	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
-	Haar(0, 0, 0x20), //Instantiate Haar sensors with default ports and version v2.0
-}; //Instantiate Haar sensors with default ports and version v2.0
-
-SO421 apogeeO2Sensors[maxSensorsPerType] = {
-	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
-	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
-	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
-	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
-	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
-	SO421(sdi12Talons[0], 0, 0), //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
-	SO421(sdi12Talons[0], 0, 0) //Instantiate O2 sensors with default ports and unknown version, pass over SDI12 Talon interface
-}; //Instantiate O2 sensors with default ports and unknown version
-
-SP421 apogeeSolarSensors[maxSensorsPerType] = {
-	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	SP421(sdi12Talons[0], 0, 0), //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	SP421(sdi12Talons[0], 0, 0) //Instantiate solar sensors with default ports and unknown version, pass over SDI12 Talon interface 
-}; //Instantiate solar sensors with default ports and unknown version
-
-TDR315H soilSensors[maxSensorsPerType] = {
-	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	TDR315H(sdi12Talons[0], 0, 0), //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	TDR315H(sdi12Talons[0], 0, 0) //Instantiate soil sensors with default ports and unknown version, pass over SDI12 Talon interface 
-}; //Instantiate soil sensors with default ports and unknown version
-
-Hedorah gasSensors[maxSensorsPerType] = {
-	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
-	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
-	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
-	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
-	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
-	Hedorah(0, 0, 0x10), //Instantiate CO2 sensors with default ports and v1.0 hardware
-	Hedorah(0, 0, 0x10) //Instantiate CO2 sensors with default ports and v1.0 hardware
-}; //Instantiate CO2 sensors with default ports and v1.0 hardware
-
-T9602 humiditySensors[maxSensorsPerType] = {
-	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
-	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
-	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
-	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
-	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
-	T9602(0, 0, 0x00), //Instantiate Telair T9602 with default ports and version v0.0 
-	T9602(0, 0, 0x00) //Instantiate Telair T9602 with default ports and version v0.0 
-}; //Instantiate Telair T9602 with default ports and version v1.1
-
-LI710 etSensors[maxSensorsPerType] = {
-	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	LI710(realTimeProvider, realSdi12, 0, 0), //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
-	LI710(realTimeProvider, realSdi12, 0, 0) //Instantiate ET sensors with default ports and unknown version, pass over SDI12 Talon interface 
-}; //Instantiate ET sensors with default ports and unknown version
-
-BaroVue10 pressureSensors[maxSensorsPerType] = {
-	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
-	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
-	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
-	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
-	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
-	BaroVue10(sdi12Talons[0], 0, 0x00), // Instantiate Barovue10 with default ports and v0.0 hardware
-	BaroVue10(sdi12Talons[0], 0, 0x00) // Instantiate Barovue10 with default ports and v0.0 hardware
-}; // Instantiate Barovue10 with default ports and v1.1 hardware
-
-const uint8_t maxNumSensors = 17; //Number must match the number of objects defined in `sensors` array
-
-Sensor* sensors[maxNumSensors] = {
-	&fileSys,
-	&battery,
-	&logger,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr,
-	nullptr
-};
-
-int numSensors = 3;
-
-namespace PinsIO { //For Kestrel v1.1
-	constexpr uint16_t VUSB = 5;
-}
-
-namespace PinsIOAlpha {
-	constexpr uint16_t I2C_EXT_EN = 10;
-	constexpr uint16_t SD_CD = 8;
-	constexpr uint16_t SD_EN = 12;
-	constexpr uint16_t AUX_EN = 15;
 	constexpr uint16_t CE = 11;
 	constexpr uint16_t LED_EN = 13;
 }

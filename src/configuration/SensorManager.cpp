@@ -1,17 +1,6 @@
 // SensorManager.cpp - Implementation
 #include "SensorManager.h"
 #include "ConfigurationManager.h"
-#include <AuxTalon.h>
-#include <I2CTalon.h>
-#include <SDI12Talon.h>
-#include <Haar.h>
-#include <SO421.h>
-#include <SP421.h>
-#include <TDR315H.h>
-#include <Hedorah.h>
-#include <T9602.h>
-#include <Li710.h>
-#include <BaroVue10.h>
 
 SensorManager::SensorManager(ConfigurationManager& configManager) 
     : configManager(configManager) {
@@ -146,49 +135,4 @@ int SensorManager::getTotalSensorCount() const {
            haarSensors.size() + apogeeO2Sensors.size() + apogeeSolarSensors.size() +
            soilSensors.size() + gasSensors.size() + humiditySensors.size() +
            etSensors.size() + pressureSensors.size();
-}
-
-// ConfigurationManager.cpp - Updated factory methods
-std::unique_ptr<AuxTalon> ConfigurationManager::createAuxTalon() {
-    return std::make_unique<AuxTalon>(0, 0x14); // Default port and hardware version
-}
-
-std::unique_ptr<I2CTalon> ConfigurationManager::createI2CTalon() {
-    return std::make_unique<I2CTalon>(0, 0x21); // Default port and hardware version
-}
-
-std::unique_ptr<SDI12Talon> ConfigurationManager::createSDI12Talon() {
-    return std::make_unique<SDI12Talon>(0, 0x14); // Default port and hardware version
-}
-
-std::unique_ptr<Haar> ConfigurationManager::createHaarSensor() {
-    return std::make_unique<Haar>(0, 0, 0x20); // Default ports and version
-}
-
-std::unique_ptr<SO421> ConfigurationManager::createO2Sensor(SDI12Talon& talon) {
-    return std::make_unique<SO421>(talon, 0, 0); // Default ports and version
-}
-
-std::unique_ptr<SP421> ConfigurationManager::createSolarSensor(SDI12Talon& talon) {
-    return std::make_unique<SP421>(talon, 0, 0); // Default ports and version
-}
-
-std::unique_ptr<TDR315H> ConfigurationManager::createSoilSensor(SDI12Talon& talon) {
-    return std::make_unique<TDR315H>(talon, 0, 0); // Default ports and version
-}
-
-std::unique_ptr<Hedorah> ConfigurationManager::createCO2Sensor() {
-    return std::make_unique<Hedorah>(0, 0, 0x10); // Default ports and version
-}
-
-std::unique_ptr<T9602> ConfigurationManager::createHumiditySensor() {
-    return std::make_unique<T9602>(0, 0, 0x00); // Default ports and version
-}
-
-std::unique_ptr<LI710> ConfigurationManager::createETSensor(ITimeProvider& timeProvider, ISDI12Talon& talon) {
-    return std::make_unique<LI710>(timeProvider, talon, 0, 0); // Default ports and version
-}
-
-std::unique_ptr<BaroVue10> ConfigurationManager::createPressureSensor(SDI12Talon& talon) {
-    return std::make_unique<BaroVue10>(talon, 0, 0x00); // Default ports and version
 }

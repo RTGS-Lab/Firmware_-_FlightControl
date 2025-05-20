@@ -5,21 +5,17 @@
 #include "IConfiguration.h"
 #include <vector>
 #include <memory>
-
-// Forward declarations for sensor types
-class Sensor;
-class Talon;
-class AuxTalon;
-class I2CTalon;
-class SDI12Talon;
-class Haar;
-class SO421;
-class SP421;
-class TDR315H;
-class Hedorah;
-class T9602;
-class LI710;
-class BaroVue10;
+#include <AuxTalon.h>
+#include <I2CTalon.h>
+#include <SDI12Talon.h>
+#include <Haar.h>
+#include <SO421.h>
+#include <SP421.h>
+#include <TDR315H.h>
+#include <Hedorah.h>
+#include <T9602.h>
+#include <Li710.h>
+#include <BaroVue10.h>
 
 class ConfigurationManager : public IConfiguration {
 public:
@@ -29,6 +25,28 @@ public:
     // IConfiguration implementation
     bool setConfiguration(std::string config) override;
     std::string getConfiguration() override;
+    std::string getDefaultConfigurationJson() const {
+        return "{\"config\":{"
+               "\"system\":{"
+               "\"logPeriod\":300,"
+               "\"backhaulCount\":4,"
+               "\"powerSaveMode\":1,"
+               "\"loggingMode\":0,"
+               "\"numAuxTalons\":1,"
+               "\"numI2CTalons\":1,"
+               "\"numSDI12Talons\":1"
+               "},"
+               "\"sensors\":{"
+               "\"numET\":0,"
+               "\"numHaar\":0,"
+               "\"numSoil\":3,"
+               "\"numApogeeSolar\":0,"
+               "\"numCO2\":0,"
+               "\"numO2\":0,"
+               "\"numPressure\":0"
+               "}"
+               "}}";
+    }
     int updateSystemConfigurationUid() override;
     int updateSensorConfigurationUid() override;
     

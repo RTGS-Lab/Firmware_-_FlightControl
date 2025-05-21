@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "SensorManager.h"
-#include "ConfigurationManager.h"
+#include "configuration/ConfigurationManager.h"
 #include "MockTimeProvider.h"
 #include "MockSDI12Talon.h"
 

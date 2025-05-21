@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "ConfigurationManager.h"
+#include "configuration/ConfigurationManager.h"
 
 class ConfigurationManagerTest : public ::testing::Test {
 protected:

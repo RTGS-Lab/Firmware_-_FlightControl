@@ -25,6 +25,7 @@ public:
     // IConfiguration implementation
     bool setConfiguration(std::string config) override;
     std::string getConfiguration() override;
+    //{"config":{"system":{"logPeriod":300,"backhaulCount":4,"powerSaveMode":1,"loggingMode":0,"numAuxTalons":1,"numI2CTalons":1,"numSDI12Talons":1},"sensors":{"numET":0,"numHaar":0,"numSoil":3,"numApogeeSolar":0,"numCO2":0,"numO2":0,"numPressure":0}}}
     std::string getDefaultConfigurationJson() const {
         return "{\"config\":{"
                "\"system\":{"

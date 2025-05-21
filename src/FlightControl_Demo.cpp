@@ -96,6 +96,8 @@ const char* const CoreSensorTypes[] = {
 #include "configuration/ConfigurationManager.h"
 #include "configuration/SensorManager.h"
 
+int getIndexOfPort(int port);
+
 const String firmwareVersion = "2.9.11";
 const String schemaVersion = "2.2.9";
 
@@ -247,6 +249,8 @@ void setup() {
 	bool hasError = false;
 	// logger.begin(Time.now(), hasCriticalError, hasError); //Needs to be called the first time with Particle time since I2C not yet initialized 
 	logger.begin(0, hasCriticalError, hasError); //Called with 0 since time collection system has not been initialized 
+	Serial.println("Critial error: " + String(hasCriticalError)); //DEBUG!
+	Serial.println("Error: " + String(hasError)); //DEBUG!
 	logger.setIndicatorState(IndicatorLight::ALL,IndicatorMode::INIT);
 	bool batState = logger.testForBat(); //Check if a battery is connected
 	logger.enableI2C_OB(false);
@@ -255,6 +259,8 @@ void setup() {
 	if(batState) battery.setIndicatorState(GonkIndicatorMode::SOLID); //Turn on charge indication LEDs during setup 
 	else battery.setIndicatorState(GonkIndicatorMode::BLINKING); //If battery not switched on, set to blinking 
 	fileSys.begin(0, hasCriticalError, hasError); //Initialzie, but do not attempt backhaul
+	Serial.println("Critial error: " + String(hasCriticalError)); //DEBUG!
+	Serial.println("Error: " + String(hasError)); //DEBUG!
 	if(hasCriticalError) {
 		Serial.println(getErrorString()); //Report current error codes
 		logger.setIndicatorState(IndicatorLight::STAT,IndicatorMode::ERROR); //Display error state if critical error is reported 
@@ -294,10 +300,14 @@ void setup() {
 	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
 
 	//load configuration from SD card, default config if not found or not possible
-    loadConfiguration();
+    Serial.println("Loading configuration..."); //DEBUG!
+	loadConfiguration();
+	Serial.println("Configuration loaded"); //DEBUG!
 
 	//initilize all sensors
+	Serial.println("Initializing sensors..."); //DEBUG!
 	initializeSensorSystem();
+	Serial.println("Sensors initialized"); //DEBUG!
 
     // Apply power save mode
 	configurePowerSave(desiredPowerSaveMode); //Setup power mode of the system (Talons and Sensors)
@@ -697,12 +707,14 @@ String getDataString()
 		bool dummy1;
 		bool dummy2;
 		
-		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) { //DEBUG! REPALCE!
+		int currentTalonIndex = getIndexOfPort(sensors[i]->getTalonPort()); //Find the talon associated with this sensor
+		
+		if((sensors[i]->getTalonPort() > 0) && (currentTalonIndex >= 0)) { //DEBUG! REPALCE!
 			Serial.print("TALON CALL: "); //DEBUG!
 			Serial.println(sensors[i]->getTalonPort());
 			logger.configTalonSense(); //Setup to allow for current testing
 			// talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists 
-			talons[sensors[i]->getTalonPort() - 1]->restart(); //DEBUG! Do only if talon is associated with sensor, and object exists 
+			talons[currentTalonIndex]->restart(); //DEBUG! Do only if talon is associated with sensor, and object exists 
 			// logger.enableI2C_OB(false); //Return to isolation mode
 			// logger.enableI2C_Global(true);
 		}
@@ -710,13 +722,15 @@ String getDataString()
 			Serial.print("Device "); //DEBUG!
 			Serial.print(i);
 			Serial.println(" is a sensor");
-			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data ports to start for the given Talon
-			// talons[sensors[i]->getTalonPort() - 1]->disablePowerAll(); //Turn off all power ports to start for the given Talon
-			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
-			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), true); //Turn on data for the given port on the Talon
-			// bool dummy1;
-			// bool dummy2;
-			// sensors[i]->begin(Time.now(), dummy1, dummy2); //DEBUG!
+			if(currentTalonIndex >= 0) { //DEBUG! REPALCE!
+				talons[currentTalonIndex]->disableDataAll(); //Turn off all data ports to start for the given Talon
+				// talons[sensors[i]->getTalonPort() - 1]->disablePowerAll(); //Turn off all power ports to start for the given Talon
+				// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
+				talons[currentTalonIndex]->enableData(sensors[i]->getSensorPort(), true); //Turn on data for the given port on the Talon
+				// bool dummy1;
+				// bool dummy2;
+				// sensors[i]->begin(Time.now(), dummy1, dummy2); //DEBUG!
+			}
 		}
 		// delay(100); //DEBUG!
 		logger.enableI2C_OB(false);
@@ -748,8 +762,8 @@ String getDataString()
 		Serial.println(output); //DEBUG!
 		// data = data + sensors[i]->getData(logger.getTime()); //DEBUG! REPLACE!
 		// if(i + 1 < sensors.size()) data = data + ","; //Only append if not last entry
-		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {
-			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), false); //Turn off data for the given port on the Talon
+		if((sensors[i]->getSensorPort() > 0) && (sensors[i]->getTalonPort() > 0) && (currentTalonIndex >= 0)) {
+			talons[currentTalonIndex]->enableData(sensors[i]->getSensorPort(), false); //Turn off data for the given port on the Talon
 			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), false); //Turn off power for the given port on the Talon //DEBUG!
 		}
 	}
@@ -777,10 +791,13 @@ String getDiagnosticString(uint8_t level)
 		logger.enableI2C_OB(false);
 		logger.enableI2C_Global(true);
 		// if(!sensors[i]->isTalon()) { //If sensor is not Talon
-		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
-			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data on Talon
+		
+		int currentTalonIndex = getIndexOfPort(sensors[i]->getTalonPort()); //Find the talon associated with this sensor
+
+		if((sensors[i]->getSensorPort() > 0) && (sensors[i]->getTalonPort() > 0) && (currentTalonIndex >= 0)) { //If a Talon is associated with the sensor, turn that port on
+			talons[currentTalonIndex]->disableDataAll(); //Turn off all data on Talon
 			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
-			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
+			talons[currentTalonIndex]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
 			
 		}
 
@@ -798,8 +815,8 @@ String getDiagnosticString(uint8_t level)
 			}
 		}
 
-		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) {
-			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), false); //Turn off data for the given port on the Talon
+		if((sensors[i]->getSensorPort() > 0) && (sensors[i]->getTalonPort() > 0) && (currentTalonIndex >= 0)) {
+			talons[currentTalonIndex]->enableData(sensors[i]->getSensorPort(), false); //Turn off data for the given port on the Talon
 			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), false); //Turn off power for the given port on the Talon //DEBUG!
 		}
 		
@@ -838,9 +855,12 @@ String getMetadataString()
 		logger.disableDataAll(); //Turn off data to all ports, then just enable those needed
 		if(sensors[i]->sensorInterface != BusType::CORE && sensors[i]->getTalonPort() != 0) logger.enableData(sensors[i]->getTalonPort(), true); //Turn on data to required Talon port only if not core and port is valid
 			// if(!sensors[i]->isTalon()) { //If sensor is not Talon
-		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
-			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data on Talon
-			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
+		
+		int currentTalonIndex = getIndexOfPort(sensors[i]->getTalonPort()); //Find the talon associated with this sensor
+
+		if((sensors[i]->getSensorPort() > 0) && (sensors[i]->getTalonPort() > 0) && (currentTalonIndex >= 0)) { //If a Talon is associated with the sensor, turn that port on
+			talons[currentTalonIndex]->disableDataAll(); //Turn off all data on Talon
+			talons[currentTalonIndex]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
 		}
 		// logger.enablePower(sensors[i]->getTalon(), true); //Turn on power to port
 		// logger.enableData(sensors[i]->getTalon(), true); //Turn on data to port
@@ -899,12 +919,24 @@ String initSensors()
 		// if(!sensors[i]->isTalon()) { //If sensor is not Talon
 		logger.configTalonSense(); //Setup to allow for current testing
 		// if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
-		if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->restart(); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
-		if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
-			talons[sensors[i]->getTalonPort() - 1]->disableDataAll(); //Turn off all data on Talon
-			// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
-			talons[sensors[i]->getTalonPort() - 1]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
-			
+		
+		Serial.print("iteration number: ");
+		Serial.println(i);
+		int currentTalonIndex = getIndexOfPort(sensors[i]->getTalonPort());
+		Serial.println("created talonOfSensor");
+		if(currentTalonIndex >= 0)
+		{
+			if(sensors[i]->getTalonPort() > 0) { //DEBUG! REPLACE!
+				Serial.println("restart talonOfSensor");
+				talons[currentTalonIndex]->restart(); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
+			} 
+			if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
+				Serial.println("disableDataAll of talonOfSensor");
+				talons[currentTalonIndex]->disableDataAll(); //Turn off all data on Talon
+				// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
+				talons[currentTalonIndex]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
+				Serial.println("enableData of talonOfSensor");
+			}
 		}
 		if(sensors[i]->getTalonPort() == 0 && sensors[i]->sensorInterface != BusType::CORE) {
 			missingSensor = true; //Set flag if any sensors not assigned to Talon and not a core sensor
@@ -1072,7 +1104,8 @@ int sleepSensors()
 				Serial.print(s + 1);
 				Serial.print(",");
 				Serial.println(sensors[s]->getTalonPort());
-				talons[sensors[s]->getTalonPort() - 1]->enablePower(sensors[s]->getSensorPort(), false); //Turn off power for any sensor which does not need to be kept powered
+				int currentTalonIndex = getIndexOfPort(sensors[s]->getTalonPort());
+				talons[currentTalonIndex]->enablePower(sensors[s]->getSensorPort(), false); //Turn off power for any sensor which does not need to be kept powered
 			}
 			else if(sensors[s]->sensorInterface != BusType::CORE && sensors[s]->getTalonPort() > 0 && sensors[s]->getTalonPort() < talons.size()){ //If sensor has a position and is not core, but keepPowered is true, run sleep routine
 				Serial.print("Sleep Sensor "); //DEBUG!
@@ -1091,7 +1124,7 @@ int sleepSensors()
 			}
 		}
 
-		for(int t = 0; t < Kestrel::numTalonPorts; t++) { //Iterate over all talon objects
+		for(int t = 0; t < talons.size(); t++) { //Iterate over all talon objects
 			if(talons[t] && talons[t]->keepPowered == false) { //If NO sensors on a given Talon require it to be kept powered, shut the whole thing down
 				Serial.print("Power Down Talon "); //DEBUG!
 				Serial.println(talons[t]->getTalonPort());
@@ -1177,6 +1210,9 @@ int detectTalons(String dummyStr)
 					Serial.println(talons[t]->getTalonPort());
 					break; //Exit the interation after the first one tests positive 
 				}
+				else {
+					Serial.println("Talon not present"); //DEBUG!
+				}
 			}
 		}
 		logger.enableData(port, false); //Turn port back off
@@ -1186,7 +1222,7 @@ int detectTalons(String dummyStr)
 	// talons[i2c.getTalonPort() - 1] = &i2c;
 	bool dummy;
 	bool dummy1;
-	for(int i = 0; i < Kestrel::numTalonPorts - 1; i++) {
+	for(int i = 0; i < talons.size(); i++) {
 		if(talons[i] && talons[i]->getTalonPort() > 0) {
 			Serial.print("BEGIN TALON: "); //DEBUG!
 			Serial.print(talons[i]->getTalonPort()); 
@@ -1206,29 +1242,30 @@ int detectTalons(String dummyStr)
 			} 
 			
 			logger.configTalonSense(); //Setup to allow for current testing 
-			// Serial.println("TALON SENSE CONFIG DONE"); //DEBUG!
+			//Serial.println("TALON SENSE CONFIG DONE"); //DEBUG!
 			// Serial.flush(); //DEBUG!
 			// logger.enableI2C_Global(true);
 			// logger.enableI2C_OB(false);
 			// talons[i]->begin(Time.now(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //DEBUG!
 			talons[i]->begin(logger.getTime(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
 			// talons[i]->begin(0, dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
-			// Serial.println("TALON BEGIN DONE"); //DEBUG!
-			// Serial.flush(); //DEBUG!
-			// delay(10000); //DEBUG!
+			Serial.println("TALON BEGIN DONE"); //DEBUG!
+			//Serial.flush(); //DEBUG!
+			//delay(10000); //DEBUG!                      
 			logger.enableData(i + 1, false); //Turn data back off to prevent conflict 
-			// Serial.println("ENABLE DATA DONE"); //DEBUG!
+			//Serial.println("ENABLE DATA DONE"); //DEBUG!
 			// Serial.flush(); //DEBUG!
-			// delay(10000); //DEBUG!
+			//delay(10000); //DEBUG!
 		}
 	}
+	//Serial.println("TALON DETECTION DONE"); //DEBUG!
 	return 0; //DEBUG!
 }
 
 int detectSensors(String dummyStr)
 {
 	/////////////// SENSOR AUTO DETECTION //////////////////////
-	for(int t = 0; t < Kestrel::numTalonPorts; t++) { //Iterate over each Talon
+	for(int t = 0; t < talons.size(); t++) { //Iterate over each Talon
 	// Serial.println(talons[t]->talonInterface); //DEBUG!
 	// Serial.print("DETECT ON TALON: "); //DEBUG!
 	// Serial.println(t);
@@ -1487,18 +1524,32 @@ void updateSensorVectors() {
     talons.clear();
     
     // Add core sensors
+	Serial.println("Adding core sensors"); //DEBUG!
     sensors.push_back(&fileSys);
     sensors.push_back(&battery);
     sensors.push_back(&logger);
     
     // Get vectors from sensor manager
     talons = sensorManager.getAllTalons();
+	Serial.println("Adding talons"); //DEBUG!
+	Serial.println(talons.size());
     for (auto* talon : talons) {
         sensors.push_back(talon);
     }
     
     auto configuredSensors = sensorManager.getAllSensors();
+	Serial.println("Adding sensors"); //DEBUG!
     for (auto* sensor : configuredSensors) {
         sensors.push_back(sensor);
     }
+	Serial.println(sensors.size()); //DEBUG!
+}
+
+int getIndexOfPort(int port) {
+    for (int i = 0; i < talons.size(); i++) {
+        if (talons[i]->getTalonPort() == port) {
+            return i;
+        }
+    }
+    return -1;
 }

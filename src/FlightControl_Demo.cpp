@@ -1358,16 +1358,41 @@ int setNodeID(String nodeID)
 int updateConfiguration(String configJson) {
     Serial.println("Updating configuration...");
     Serial.println(configJson);
-    
-    // Validate JSON format
-    if (configJson.indexOf("\"config\"") == -1) {
+
+	//verify the passed config is valid format
+	if (configJson.indexOf("\"config\"") == -1) {
         Serial.println("Error: Invalid configuration format. Missing 'config' element.");
-        return -2; // Invalid format
+        return -1; // Invalid format
     }
-    fileSys.clearFileFromSD("config.json");
-	fileSys.writeToSD(configJson.c_str(), "config.json");
+	if (configJson.indexOf("\"system\"") == -1) {
+		Serial.println("Error: Invalid configuration format. Missing 'version' element.");
+		return -2; // Invalid format
+	}
+	if (configJson.indexOf("\"sensors\"") == -1) {
+		Serial.println("Error: Invalid configuration format. Missing 'version' element.");
+		return -3; // Invalid format
+	}
+
+	// test write to SD card
+	if (!fileSys.writeToSD("", "config.json")) {
+		Serial.println("Error: Failed to write to SD card.");
+		return -4; // Failed to write config
+	}
+
+	//remove current config.json
+	if(!fileSys.clearFileFromSD("config.json")) {
+		Serial.println("Error: Failed to clear current configuration from SD card.");
+		return -5; // Failed to remove current config
+	}
 	
-	return loadConfiguration();
+	// Write new configuration to SD card
+	if (!fileSys.writeToSD(configJson.c_str(), "config.json")) {
+		Serial.println("Error: Failed to write new configuration to SD card.");
+		return -6; // Failed to write new config
+	}
+
+	System.reset(); //Reset the system to apply new configuration
+	return 1; //Success
 }
 
 int getSystemConfiguration(String dummy) {

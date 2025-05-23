@@ -18,7 +18,100 @@ Configuration can be updated through:
      - See below for other types of responses.
 3. **SD Card**: Replace `config.json` file and restart system
 
-#### updateConfig Information
+#### updateConfig Function Details
+
+The `updateConfig` Particle cloud function accepts a JSON configuration string and applies it to the system. The function provides detailed feedback about the configuration update process.
+
+##### Usage
+
+```bash
+# Using Particle CLI
+particle call <device_name> updateConfig '{"config":{"system":{"logPeriod":600}}}'
+
+# Using Particle Console
+# Paste the JSON configuration directly into the function argument field
+
+# Remove configuration (revert to defaults)
+particle call <device_name> updateConfig 'remove'
+```
+
+##### Response Types
+
+The `updateConfig` function returns different responses based on the outcome:
+
+**Success Responses:**
+- **Return 1**: Configuration updated successfully, device will restart automatically
+- **Return 0**: Configuration removed successfully (when using "remove" command)
+- Verify success by checking the first metadata packet after reset matches your configuration
+- New configuration UIDs will be available via `getSystemConfig` and `getSensorConfig`
+
+**Error Responses:**
+The function returns specific error codes when configuration updates fail:
+
+| Error Code | Description | Troubleshooting |
+|------------|-------------|-----------------|
+| `0` | Success - Configuration removed from SD card | |
+| `1` | Success - Configuration updated, system restarting | |
+| `-1` | Failed to remove configuration from SD card | |
+| `-2` | Invalid configuration format - Missing 'config' element | |
+| `-3` | Invalid configuration format - Missing 'system' element | |
+| `-4` | Invalid configuration format - Missing 'sensors' element | |
+| `-5` | Failed to write test file to SD card | |
+| `-6` | Failed to remove current configuration from SD card | |
+| `-7` | Failed to write new configuration to SD card | |
+
+##### Configuration Validation Rules
+
+The system performs several validation checks:
+
+1. **JSON Structure Validation**
+   - Must contain "config" root element (checked by string search)
+   - Must contain "system" section within config (checked by string search)
+   - Must contain "sensors" section within config (checked by string search)
+   - All whitespace, newlines, carriage returns, and tabs are automatically stripped
+
+2. **SD Card Validation**
+   - SD card must be accessible for writing
+   - System tests write capability before attempting configuration update
+   - Current configuration must be removable before writing new configuration
+
+3. **Special Commands**
+   - Use "remove" as the configuration string to delete config.json and revert to defaults
+
+##### Example Error Scenarios
+
+###### Missing Configuration Elements
+```bash
+particle call device_name updateConfig '{"system":{"logPeriod":300}}' # Missing "config" wrapper
+# Returns: -2
+
+particle call device_name updateConfig '{"config":{"sensors":{"numSoil":3}}}' # Missing "system" section
+# Returns: -3
+
+particle call device_name updateConfig '{"config":{"system":{"logPeriod":300}}}' # Missing "sensors" section
+# Returns: -4
+```
+
+###### SD Card Issues
+```bash
+# If SD card is not available or full
+particle call device_name updateConfig '{"config":{"system":{"logPeriod":300},"sensors":{}}}'
+# May return: -5, -6, or -7 depending on the specific SD card failure point
+```
+
+###### Configuration Removal
+```bash
+particle call device_name updateConfig 'remove'
+# Returns: 0 (success) or -1 (failed to remove)
+```
+
+##### Best Practices
+
+1. **Validate JSON First**: Use a JSON validator before sending to the device
+2. **Check Parameter Ranges**: Verify all values are within acceptable ranges
+3. **Plan Hardware Requirements**: Ensure sufficient Talons for sensor configuration
+4. **Monitor Device Status**: Watch for restart after successful configuration
+5. **Verify Configuration**: Check UIDs after restart to confirm changes applied
 
 #### Configuration UIDs
 

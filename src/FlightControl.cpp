@@ -40,16 +40,6 @@ bool loadConfiguration();
 void updateSensorVectors();
 void initializeSensorSystem();
 
-// Forward declare the types of core sensors (for configuration purposes)
-const char* const CoreSensorTypes[] = {
-    "FileSystem",
-    "Aux",
-    "I2C",
-    "SDI12",
-    "Battery",
-    "Logger"
-};
-
 #define WAIT_GPS false
 #define USE_CELL  //System attempts to connect to cell
 #include <AuxTalon.h>
@@ -242,7 +232,8 @@ void setup() {
 	Particle.function("systemRestart", systemRestart);
 	Particle.function("takeSample", takeSample);
 	Particle.function("commandExe", commandExe);
-	
+	Serial.begin(1000000); 
+	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
 	Serial.print("RESET CAUSE: "); //DEBUG!
 	Serial.println(System.resetReason()); //DEBUG!
 	bool hasCriticalError = false;
@@ -295,9 +286,6 @@ void setup() {
 	// 	logger.enablePower(i, true); 
 	// 	logger.enableData(i, false); //Turn off all data by default
 	// }
-
-	Serial.begin(1000000); 
-	waitFor(serialConnected, 10000); //DEBUG! Wait until serial starts sending or 10 seconds 
 
 	//load configuration from SD card, default config if not found or not possible
     Serial.println("Loading configuration..."); //DEBUG!
@@ -926,22 +914,17 @@ String initSensors()
 		logger.configTalonSense(); //Setup to allow for current testing
 		// if(sensors[i]->getTalonPort() > 0 && talons[sensors[i]->getTalonPort() - 1]) talons[sensors[i]->getTalonPort() - 1]->begin(logger.getTime(), dummy1, dummy2); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
 		
-		Serial.print("iteration number: ");
-		Serial.println(i);
 		int currentTalonIndex = getIndexOfPort(sensors[i]->getTalonPort());
-		Serial.println("created talonOfSensor");
+
 		if(currentTalonIndex >= 0)
 		{
 			if(sensors[i]->getTalonPort() > 0) { //DEBUG! REPLACE!
-				Serial.println("restart talonOfSensor");
 				talons[currentTalonIndex]->restart(); //DEBUG! Do only if talon is associated with sensor, and object exists //DEBUG! REPLACE!
 			} 
 			if(sensors[i]->getSensorPort() > 0 && sensors[i]->getTalonPort() > 0) { //If a Talon is associated with the sensor, turn that port on
-				Serial.println("disableDataAll of talonOfSensor");
 				talons[currentTalonIndex]->disableDataAll(); //Turn off all data on Talon
 				// talons[sensors[i]->getTalonPort() - 1]->enablePower(sensors[i]->getSensorPort(), true); //Turn on power for the given port on the Talon
 				talons[currentTalonIndex]->enableData(sensors[i]->getSensorPort(), true); //Turn back on only port used
-				Serial.println("enableData of talonOfSensor");
 			}
 		}
 		if(sensors[i]->getTalonPort() == 0 && sensors[i]->sensorInterface != BusType::CORE) {
@@ -1255,7 +1238,7 @@ int detectTalons(String dummyStr)
 			// talons[i]->begin(Time.now(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //DEBUG!
 			talons[i]->begin(logger.getTime(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
 			// talons[i]->begin(0, dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
-			Serial.println("TALON BEGIN DONE"); //DEBUG!
+			//Serial.println("TALON BEGIN DONE"); //DEBUG!
 			//Serial.flush(); //DEBUG!
 			//delay(10000); //DEBUG!                      
 			logger.enableData(talons[i]->getTalonPort(), false); //Turn data back off to prevent conflict 
@@ -1272,31 +1255,31 @@ int detectSensors(String dummyStr)
 {
 	/////////////// SENSOR AUTO DETECTION //////////////////////
 	for(int t = 0; t < talons.size(); t++) { //Iterate over each Talon
-	//Serial.println(talons[t]->talonInterface); //DEBUG!
+	// Serial.println(talons[t]->talonInterface); //DEBUG!
 	// Serial.print("DETECT ON TALON: "); //DEBUG!
-	//Serial.println(t);
+	// Serial.println(t);
 	// Serial.flush();
-	//if(talons[t]) {
+	// if(talons[t]) {
 	// 	delay(5000);
 	// 	Serial.println("TALON EXISTS"); //DEBUG!
 	// 	Serial.flush();
-	//}
+	// }
 	// else {
 	// 	delay(5000);
 	// 	Serial.println("TALON NOT EXISTS"); //DEBUG!
 	// 	Serial.flush();
-	//}
+	// }
 	// delay(5000);
-	//if(talons[t]->talonInterface != BusType::NONE) {
+	// if(talons[t]->talonInterface != BusType::NONE) {
 	// 	delay(5000);
-	//Serial.println("TALON NOT NONE"); //DEBUG!
+	// Serial.println("TALON NOT NONE"); //DEBUG!
 	// 	Serial.flush();
 	// }
-	//else {
+	// else {
 	// 	delay(5000);
-	//Serial.println("TALON NONE"); //DEBUG!
+	// Serial.println("TALON NONE"); //DEBUG!
 	// 	Serial.flush();
-	//}
+	// }
 	// delay(10000); //DEBUG!
 		// Serial.println(talons[t]->talonInterface); //DEBUG!
 		if(talons[t] && talons[t]->talonInterface != BusType::NONE && talons[t]->getTalonPort() != 0) { //Only proceed if Talon has a bus which can be iterated over, and the talon in question exists and has been detected 

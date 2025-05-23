@@ -69,10 +69,6 @@ public:
     int getNumO2() const { return m_numO2; }
     int getNumPressure() const { return m_numPressure; }
     
-    // Vector management methods
-    void createSensorVectors();
-    void clearSensorVectors();
-    
     // Static factory methods for creating sensors
     static std::unique_ptr<AuxTalon> createAuxTalon();
     static std::unique_ptr<I2CTalon> createI2CTalon();

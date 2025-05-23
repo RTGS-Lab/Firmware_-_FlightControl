@@ -1,14 +1,14 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "SensorManager.h"
-#include "configuration/ConfigurationManager.h"
+#include "configuration/SensorManager.h"
+#include "MockConfiguration.h"
 #include "MockTimeProvider.h"
 #include "MockSDI12Talon.h"
 
 class SensorManagerTest : public ::testing::Test {
 protected:
-    ConfigurationManager configManager;
-    SensorManager sensorManager{configManager};
+    MockConfiguration mockConfig;
+    SensorManager sensorManager{mockConfig};
     MockTimeProvider mockTimeProvider;
     MockSDI12Talon mockSDI12Talon;
     

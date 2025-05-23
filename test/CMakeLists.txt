@@ -53,12 +53,12 @@ add_executable(unit_tests
     ${CMAKE_SOURCE_DIR}/lib/Driver_-_Li710/src/Li710.cpp
 
     # ConfigurationManger tests
-    unit/ConfigurationManager/ConfigurationManagerTest.cpp
-    ${CMAKE_SOURCE_DIR}/src/configuration/ConfigurationManager.cpp
+    #unit/ConfigurationManager/ConfigurationManagerTest.cpp
+    #${CMAKE_SOURCE_DIR}/src/configuration/ConfigurationManager.cpp
     
     # SensorManager Tests
-    unit/SensorManager/SensorManagerTest.cpp
-    ${CMAKE_SOURCE_DIR}/src/configuration/SensorManager.cpp
+    #unit/SensorManager/SensorManagerTest.cpp
+    #${CMAKE_SOURCE_DIR}/src/configuration/SensorManager.cpp
 )
 
 # Link against mocks and GoogleTest

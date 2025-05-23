@@ -1356,42 +1356,62 @@ int setNodeID(String nodeID)
 }
 
 int updateConfiguration(String configJson) {
+	if(configJson == "remove") {
+		// Remove the configuration file from the SD card
+		if (!fileSys.removeFileFromSD("config.json")) {
+			Serial.println("Error: Failed to remove configuration from SD card.");
+			return -1; // Failed to remove config
+		}
+		else {
+			Serial.println("Configuration removed from SD card.");
+		}
+		return 0; // Success
+	}
+
     Serial.println("Updating configuration...");
     Serial.println(configJson);
 
+	//remove all whitespace and newlines from the config string
+	configJson.replace(" ", "");
+	configJson.replace("\n", "");
+	configJson.replace("\r", "");
+	configJson.replace("\t", "");
+
+	Serial.println(configJson);
+	
 	//verify the passed config is valid format
 	if (configJson.indexOf("\"config\"") == -1) {
         Serial.println("Error: Invalid configuration format. Missing 'config' element.");
-        return -1; // Invalid format
+        return -2; // Invalid format
     }
 	if (configJson.indexOf("\"system\"") == -1) {
-		Serial.println("Error: Invalid configuration format. Missing 'version' element.");
-		return -2; // Invalid format
+		Serial.println("Error: Invalid configuration format. Missing 'system' element.");
+		return -3; // Invalid format
 	}
 	if (configJson.indexOf("\"sensors\"") == -1) {
-		Serial.println("Error: Invalid configuration format. Missing 'version' element.");
-		return -3; // Invalid format
+		Serial.println("Error: Invalid configuration format. Missing 'sensors' element.");
+		return -4; // Invalid format
 	}
 
 	// test write to SD card
 	if (!fileSys.writeToSD("", "config.json")) {
 		Serial.println("Error: Failed to write to SD card.");
-		return -4; // Failed to write config
+		return -5; // Failed to write config
 	}
 
-	//remove current config.json
-	if(!fileSys.clearFileFromSD("config.json")) {
-		Serial.println("Error: Failed to clear current configuration from SD card.");
-		return -5; // Failed to remove current config
+	//clear current config.json
+	if(!fileSys.removeFileFromSD("config.json")) {
+		Serial.println("Error: Failed to remove current configuration from SD card.");
+		return -6; // Failed to remove current config
 	}
 	
 	// Write new configuration to SD card
 	if (!fileSys.writeToSD(configJson.c_str(), "config.json")) {
 		Serial.println("Error: Failed to write new configuration to SD card.");
-		return -6; // Failed to write new config
+		return -7; // Failed to write new config
 	}
 
-	System.reset(); //Reset the system to apply new configuration
+	System.reset(); //restart the system to apply new configuration
 	return 1; //Success
 }
 
@@ -1519,7 +1539,7 @@ bool loadConfiguration() {
         Serial.println("Loading default configuration...");
         std::string defaultConfig = configManager.getDefaultConfigurationJson();
         configLoaded = configManager.setConfiguration(defaultConfig);
-        fileSys.clearFileFromSD("config.json");
+        fileSys.removeFileFromSD("config.json");
         fileSys.writeToSD(defaultConfig.c_str(), "config.json");
     }
     

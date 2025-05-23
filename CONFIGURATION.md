@@ -12,7 +12,13 @@ Configuration is loaded at startup in the following priority order:
 Configuration can be updated through:
 
 1. **Cloud Function**: `updateConfig` Particle function
-2. **SD Card**: Replace `config.json` file and restart system
+     - copy the intended config.json and paste it as and argument into updateConfig
+     - If successful, the device will restart without returning any value.
+     - verify that the first metadata packet after reset matches your configuration
+     - See below for other types of responses.
+3. **SD Card**: Replace `config.json` file and restart system
+
+#### updateConfig Information
 
 #### Configuration UIDs
 

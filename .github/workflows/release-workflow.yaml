@@ -99,12 +99,37 @@ jobs:
           commit: ${{ steps.commit.outputs.updated-version-sha || github.sha }}
           token: ${{ steps.app-token.outputs.token }}
 
-  upload:
-    name: Upload to Particle
+  upload-to-particle:
+    name: Upload to Particle Projects
     needs: release
     runs-on: ubuntu-latest
     # Only run if release job has completed and the firmware version was updated
     if: needs.release.outputs.firmware-version-updated == 'true'
+    strategy:
+      matrix:
+        project:
+          - name: "GEMS Demo"
+            product_id_secret: "PARTICLE_GEMS_DEMO_PRODUCT_ID"
+          - name: "Runk Lab (B SoM)"
+            product_id_secret: "PARTICLE_RUNCK_LAB_BSOM_PRODUCT_ID"
+          - name: "WinterTurf - v3 International"
+            product_id_secret: "PARTICLE_WINTERTURF_INTERNATIONAL_PRODUCT_ID"
+          - name: "WinterTurf - v3"
+            product_id_secret: "PARTICLE_WINTERTURF_PRODUCT_ID"
+          - name: "Plant Pathways"
+            product_id_secret: "PARTICLE_PLANT_PATHWAYS_PRODUCT_ID"
+          - name: "LCCMR Irrigation"
+            product_id_secret: "PARTICLE_LCCMR_IRRIGATION_PRODUCT_ID"
+          - name: "Roadside Turf"
+            product_id_secret: "PARTICLE_ROADSIDE_TURF_PRODUCT_ID"
+          - name: "PepsiCo"
+            product_id_secret: "PARTICLE_PEPSICO_PRODUCT_ID"
+          - name: "Stellenbosch"
+            product_id_secret: "PARTICLE_STELLENBOSCH_PRODUCT_ID"
+          - name: "Runk Lab (B5 SoM)"
+            product_id_secret: "PARTICLE_RUNCK_LAB_B5SOM_PRODUCT_ID"
+          - name: "LCCMR Irrigation Sensing"
+            product_id_secret: "PARTICLE_LCCMR_IRRIGATION_SENSING_PRODUCT_ID"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -121,12 +146,16 @@ jobs:
           FIRMWARE=$(find ./release -name "*.bin" -type f | head -n 1)
           echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
 
-      - name: Upload product firmware to Particle
+      - name: Upload firmware to ${{ matrix.project.name }}
         uses: particle-iot/firmware-upload-action@v1
         with:
           particle-access-token: ${{ secrets.PARTICLE_ACCESS_TOKEN }}
           firmware-path: ${{ steps.find_binary.outputs.firmware-path }}
           firmware-version: ${{ needs.release.outputs.firmware-version }}
-          product-id: ${{ secrets.PARTICLE_GEMS_DEMO_PRODUCT_ID }}
+          product-id: ${{ secrets[matrix.project.product_id_secret] }}
           title: 'Firmware v${{ needs.release.outputs.firmware-version }}'
-          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }}'
+          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }})'
+
+      - name: Log upload success
+        run: |
+          echo "✅ Successfully uploaded firmware v${{ needs.release.outputs.firmware-version }} to ${{ matrix.project.name }}"

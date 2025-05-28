@@ -1282,7 +1282,7 @@ int detectSensors(String dummyStr)
 	// }
 	// delay(10000); //DEBUG!
 		// Serial.println(talons[t]->talonInterface); //DEBUG!
-		if(talons[t] && talons[t]->talonInterface != BusType::NONE && talons[t]->getTalonPort() != 0) { //Only proceed if Talon has a bus which can be iterated over, and the talon in question exists and has been detected 
+		if((talons[t]) && (talons[t]->talonInterface != BusType::NONE) && (talons[t]->getTalonPort() != 0)) { //Only proceed if Talon has a bus which can be iterated over, and the talon in question exists and has been detected 
 			logger.enableData(talons[t]->getTalonPort(), true); //Turn on specific channel
 			// logger.enableI2C_Global(true);
 			// logger.enableI2C_OB(false);
@@ -1297,13 +1297,16 @@ int detectSensors(String dummyStr)
 				Serial.print(",");
 				Serial.println(p);
 				for(int s = 0; s < sensors.size(); s++) { //Iterate over all sensors objects
-					if(sensors[s]->getTalonPort() == 0 && talons[t]->talonInterface == sensors[s]->sensorInterface) { //If Talon not already specified AND sensor bus is compatible with Talon bus
+					if((sensors[s]->getTalonPort() == 0) && (talons[t]->talonInterface == sensors[s]->sensorInterface)) { //If Talon not already specified AND sensor bus is compatible with Talon bus
 						Serial.print("Test Sensor: "); //DEBUG!
 						Serial.println(s);
 						if(sensors[s]->isPresent()) { //Test if that sensor is present, if it is, configure the port
 							sensors[s]->setTalonPort(talons[t]->getTalonPort()); //Set the Talon port for the sensor
 							sensors[s]->setSensorPort(p);
-							if(sensors[s]->keepPowered == true) talons[sensors[s]->getTalonPort() - 1]->keepPowered = true; //If any of the sensors on a Talon require power, set the flag for the Talon
+							if(sensors[s]->keepPowered == true) {
+								int currentTalonIndex = getIndexOfPort(sensors[s]->getTalonPort());
+								talons[currentTalonIndex]->keepPowered = true; //If any of the sensors on a Talon require power, set the flag for the Talon
+							}
 							Serial.print("Sensor Found:\n\t"); //DEBUG!
 							Serial.println(sensors[s]->getTalonPort());
 							Serial.print('\t');
@@ -1314,6 +1317,9 @@ int detectSensors(String dummyStr)
 							// Serial.println(talons[t]->getTalonPort());
 							// talons[t]->enableData(p, false);
 							break; //Exit the interation after the first sensor tests positive 
+						}
+						else {
+							Serial.println("Sensor not present");
 						}
 						delay(10); //Wait in between sensor calls
 						// talons[t]->enableData(p, false);
@@ -1536,19 +1542,27 @@ bool loadConfiguration() {
 }
 
 void initializeSensorSystem() {
-    // Create SDI12 adapter if needed
+    // First initialize talons only (without sensors)
+    sensorManager.initializeTalons();
+    
+    // Create SDI12 adapter from actual talons if needed
     auto& sdi12Talons = sensorManager.getSDI12Talons();
+	Serial.println("Got sdi12 talons");
+	Serial.println(sdi12Talons.size());
     if (!sdi12Talons.empty() && realSdi12 == nullptr) {
+		Serial.println("Creating real SDI12 adapter");
         realSdi12 = new SDI12TalonAdapter(*sdi12Talons[0]);
     }
     
-    // Initialize sensors
+    // Now initialize sensors with proper adapter
     if (realSdi12 != nullptr) {
-        sensorManager.initializeSensors(realTimeProvider, *realSdi12);
+		Serial.println("Using real SDI12 adapter");
+        sensorManager.initializeSensorsOnly(realTimeProvider, *realSdi12);
     } else {
+		Serial.println("Creating dummy adapter");
         SDI12Talon dummyTalon(0, 0x14);
         SDI12TalonAdapter dummyAdapter(dummyTalon);
-        sensorManager.initializeSensors(realTimeProvider, dummyAdapter);
+        sensorManager.initializeSensorsOnly(realTimeProvider, dummyAdapter);
     }
     
     updateSensorVectors();

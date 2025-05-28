@@ -10,6 +10,14 @@ void SensorManager::initializeSensors(ITimeProvider& timeProvider, ISDI12Talon& 
     // Clear existing sensors
     clearAllSensors();
     
+    // Initialize talons first
+    initializeTalons();
+    
+    // Initialize sensors
+    initializeSensorsOnly(timeProvider, sdi12Interface);
+}
+
+void SensorManager::initializeTalons() {
     // Create Talons
     for (int i = 0; i < configManager.getNumAuxTalons(); i++) {
         auxTalons.push_back(ConfigurationManager::createAuxTalon());
@@ -22,7 +30,9 @@ void SensorManager::initializeSensors(ITimeProvider& timeProvider, ISDI12Talon& 
     for (int i = 0; i < configManager.getNumSDI12Talons(); i++) {
         sdi12Talons.push_back(ConfigurationManager::createSDI12Talon());
     }
-    
+}
+
+void SensorManager::initializeSensorsOnly(ITimeProvider& timeProvider, ISDI12Talon& sdi12Interface) {
     // Create Sensors
     for (int i = 0; i < configManager.getNumHaar(); i++) {
         haarSensors.push_back(ConfigurationManager::createHaarSensor());

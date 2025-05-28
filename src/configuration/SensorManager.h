@@ -23,6 +23,12 @@ public:
     // Initialize all sensor vectors based on configuration
     void initializeSensors(ITimeProvider& timeProvider, ISDI12Talon& sdi12Interface);
     
+    // Initialize only talons
+    void initializeTalons();
+    
+    // Initialize only sensors (after talons are already initialized)
+    void initializeSensorsOnly(ITimeProvider& timeProvider, ISDI12Talon& sdi12Interface);
+    
     // Clear all sensors
     void clearAllSensors();
     

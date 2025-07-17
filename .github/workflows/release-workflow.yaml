@@ -125,9 +125,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-versioned-firmware
-          path: |
-            firmware-${{ matrix.platform }}-*.bin
-            debug-objects-${{ matrix.platform }}.tar.gz
+          path: firmware-${{ matrix.platform }}-*.bin
 
   create-release:
     name: Create GitHub Release
@@ -152,14 +150,14 @@ jobs:
 
       - name: Prepare release artifacts
         run: |
-          find ./release-files -name "*.bin" -o -name "*.tar.gz" | head -10
+          find ./release-files -name "*.bin" | head -10
           ls -la ./release-files/
 
       - name: Create GitHub release
         id: release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./release-files/**/*
+          artifacts: ./release-files/**/*.bin
           generateReleaseNotes: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release_notes == '' }}
           body: ${{ github.event.inputs.release_notes }}
           name: "Firmware v${{ needs.release.outputs.firmware-version }}"
@@ -238,8 +236,8 @@ jobs:
             product_id_secret: "PARTICLE_STELLENBOSCH_PRODUCT_ID"
           - name: "Runk Lab (B5 SoM)"
             product_id_secret: "PARTICLE_RUNCK_LAB_B5SOM_PRODUCT_ID"
-          - name: "LCCMR Irrigation Sensing"
-            product_id_secret: "PARTICLE_LCCMR_IRRIGATION_SENSING_PRODUCT_ID"
+          #- name: "LCCMR Irrigation Sensing"
+            #product_id_secret: "PARTICLE_LCCMR_IRRIGATION_SENSING_PRODUCT_ID"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

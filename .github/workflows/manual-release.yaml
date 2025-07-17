@@ -4,6 +4,15 @@ name: Manual Release
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: 'Platform to build (bsom/b5som/both)'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - bsom
+          - b5som
+          - both
       branch:
         description: 'Branch to release'
         required: false
@@ -24,10 +33,12 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      firmware-path: ${{ steps.compile.outputs.firmware-path }}
-      firmware-version: ${{ steps.compile.outputs.firmware-version }}
-      firmware-version-updated: ${{ steps.compile.outputs.firmware-version-updated }}
+      firmware-version: ${{ steps.compile-bsom.outputs.firmware-version || steps.compile-b5som.outputs.firmware-version }}
+      firmware-version-updated: ${{ steps.compile-bsom.outputs.firmware-version-updated || steps.compile-b5som.outputs.firmware-version-updated }}
       release-url: ${{ steps.release.outputs.html_url }}
+    strategy:
+      matrix:
+        platform: ['bsom', 'b5som']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,37 +46,83 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.inputs.branch || github.ref }}
 
-      - name: Compile application
-        id: compile
+      - name: Compile BSOM application
+        id: compile-bsom
+        if: matrix.platform == 'bsom' && (github.event.inputs.platform == 'bsom' || github.event.inputs.platform == 'both')
         uses: particle-iot/compile-action@v1
         with:
           particle-platform-name: 'bsom'
           auto-version: ${{ github.event.inputs.force_version_increment == 'yes' }}
           device-os-version: 6.2.1
 
-      - name: Upload artifacts
+      - name: Compile B5SOM application
+        id: compile-b5som
+        if: matrix.platform == 'b5som' && (github.event.inputs.platform == 'b5som' || github.event.inputs.platform == 'both')
+        uses: particle-iot/compile-action@v1
+        with:
+          particle-platform-name: 'b5som'
+          auto-version: false
+          device-os-version: 6.2.1
+
+      - name: Upload BSOM artifacts
+        if: matrix.platform == 'bsom' && (github.event.inputs.platform == 'bsom' || github.event.inputs.platform == 'both')
         uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts
+          name: bsom-release-artifacts
           path: |
-            ${{ steps.compile.outputs.firmware-path }}
-            ${{ steps.compile.outputs.target-path }}
+            ${{ steps.compile-bsom.outputs.firmware-path }}
+            ${{ steps.compile-bsom.outputs.target-path }}
 
-      - name: Create archive of target directory
-        if: steps.compile.outputs.firmware-version-updated == 'true'
+      - name: Upload B5SOM artifacts
+        if: matrix.platform == 'b5som' && (github.event.inputs.platform == 'b5som' || github.event.inputs.platform == 'both')
+        uses: actions/upload-artifact@v4
+        with:
+          name: b5som-release-artifacts
+          path: |
+            ${{ steps.compile-b5som.outputs.firmware-path }}
+            ${{ steps.compile-b5som.outputs.target-path }}
+
+      - name: Create archive and rename firmware files for BSOM
+        if: matrix.platform == 'bsom' && (github.event.inputs.platform == 'bsom' || github.event.inputs.platform == 'both') && steps.compile-bsom.outputs.firmware-version-updated == 'true'
         run: |
-          tar -czf debug-objects.tar.gz ${{ steps.compile.outputs.target-path }}
+          tar -czf debug-objects-bsom.tar.gz ${{ steps.compile-bsom.outputs.target-path }}
+          cp ${{ steps.compile-bsom.outputs.firmware-path }} firmware-bsom-${{ steps.compile-bsom.outputs.firmware-version }}.bin
+
+      - name: Create archive and rename firmware files for B5SOM
+        if: matrix.platform == 'b5som' && (github.event.inputs.platform == 'b5som' || github.event.inputs.platform == 'both')
+        run: |
+          tar -czf debug-objects-b5som.tar.gz ${{ steps.compile-b5som.outputs.target-path }}
+          VERSION=${{ steps.compile-bsom.outputs.firmware-version || steps.compile-b5som.outputs.firmware-version }}
+          cp ${{ steps.compile-b5som.outputs.firmware-path }} firmware-b5som-$VERSION.bin
+
+      - name: Upload versioned firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-versioned-firmware
+          path: |
+            firmware-${{ matrix.platform }}-*.bin
+            debug-objects-${{ matrix.platform }}.tar.gz
+
+  create-release:
+    name: Create GitHub Release
+    needs: release
+    runs-on: ubuntu-latest
+    if: needs.release.outputs.firmware-version-updated == 'true'
+    steps:
+      - name: Download all versioned firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-files
 
       - name: Create GitHub release
         id: release
-        if: steps.compile.outputs.firmware-version-updated == 'true'
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ${{ steps.compile.outputs.firmware-path }},debug-objects.tar.gz
+          artifacts: ./release-files/**/*
           generateReleaseNotes: ${{ github.event.inputs.release_notes == '' }}
           body: ${{ github.event.inputs.release_notes }}
-          name: "Firmware v${{ steps.compile.outputs.firmware-version }} (Manual)"
-          tag: "v${{ steps.compile.outputs.firmware-version }}-manual"
+          name: "Firmware v${{ needs.release.outputs.firmware-version }} (Manual)"
+          tag: "v${{ needs.release.outputs.firmware-version }}-manual"
           commit: ${{ github.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: true

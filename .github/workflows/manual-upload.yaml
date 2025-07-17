@@ -4,6 +4,14 @@ name: Manual Upload to Particle
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: 'Platform to upload (bsom/b5som)'
+        required: true
+        default: 'bsom'
+        type: choice
+        options:
+          - bsom
+          - b5som
       product_id:
         description: 'Custom product ID (defaults to secret)'
         required: false
@@ -40,7 +48,7 @@ jobs:
         if: github.event.inputs.use_release_artifact != 'yes'
         uses: particle-iot/compile-action@v1
         with:
-          particle-platform-name: 'bsom'
+          particle-platform-name: ${{ github.event.inputs.platform }}
           device-os-version: 6.2.1
 
       - name: Download release artifacts
@@ -48,7 +56,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: manual-release.yaml
-          name: release-artifacts
+          name: ${{ github.event.inputs.platform }}-release-artifacts
           path: ./firmware
           
       - name: Find firmware binary
@@ -60,7 +68,9 @@ jobs:
             FIRMWARE="${{ steps.compile.outputs.firmware-path }}"
           fi
           echo "Using firmware: $FIRMWARE"
-          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+          # Create a properly named firmware file
+          cp "$FIRMWARE" "firmware-${{ github.event.inputs.platform }}-${{ github.event.inputs.version }}.bin"
+          echo "firmware-path=firmware-${{ github.event.inputs.platform }}-${{ github.event.inputs.version }}.bin" >> $GITHUB_OUTPUT
 
       - name: Upload product firmware to Particle
         uses: particle-iot/firmware-upload-action@v1

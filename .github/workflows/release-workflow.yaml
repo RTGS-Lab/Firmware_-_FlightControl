@@ -28,10 +28,12 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
-      firmware-path: ${{ steps.compile.outputs.firmware-path }}
-      firmware-version: ${{ steps.compile.outputs.firmware-version }}
-      firmware-version-updated: ${{ steps.compile.outputs.firmware-version-updated }}
+      firmware-version: ${{ steps.compile-bsom.outputs.firmware-version }}
+      firmware-version-updated: ${{ steps.compile-bsom.outputs.firmware-version-updated }}
       release-url: ${{ steps.release.outputs.html_url }}
+    strategy:
+      matrix:
+        platform: ['bsom', 'b5som']
     steps:
       # Generate a GitHub App token using the official action - UNCONDITIONALLY
       - name: Create GitHub App token
@@ -50,25 +52,45 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Compile application
-        id: compile
+      - name: Compile application for BSOM
+        id: compile-bsom
+        if: matrix.platform == 'bsom'
         uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
         with:
           particle-platform-name: 'bsom'
           auto-version: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.version_increment != 'no' }}
           device-os-version: 6.2.1
 
-      - name: Upload artifacts
+      - name: Compile application for B5SOM
+        id: compile-b5som
+        if: matrix.platform == 'b5som'
+        uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
+        with:
+          particle-platform-name: 'b5som'
+          auto-version: false
+          device-os-version: 6.2.1
+
+      - name: Upload BSOM artifacts
+        if: matrix.platform == 'bsom'
         uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts
+          name: bsom-release-artifacts
           path: |
-            ${{ steps.compile.outputs.firmware-path }}
-            ${{ steps.compile.outputs.target-path }}
+            ${{ steps.compile-bsom.outputs.firmware-path }}
+            ${{ steps.compile-bsom.outputs.target-path }}
+
+      - name: Upload B5SOM artifacts
+        if: matrix.platform == 'b5som'
+        uses: actions/upload-artifact@v4
+        with:
+          name: b5som-release-artifacts
+          path: |
+            ${{ steps.compile-b5som.outputs.firmware-path }}
+            ${{ steps.compile-b5som.outputs.target-path }}
 
       - name: Commit updated version file
         id: commit
-        if: steps.compile.outputs.firmware-version-updated == 'true'
+        if: matrix.platform == 'bsom' && steps.compile-bsom.outputs.firmware-version-updated == 'true'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
@@ -77,30 +99,30 @@ jobs:
 
       # When a GitHub Action pushes commits or tags, it does not trigger a new GitHub Action job
       - name: Push changes
-        if: steps.compile.outputs.firmware-version-updated == 'true'
+        if: matrix.platform == 'bsom' && steps.compile-bsom.outputs.firmware-version-updated == 'true'
         run: |
           git push origin HEAD:${{ github.ref_name }}
 
       - name: Create archive of target directory
-        if: steps.compile.outputs.firmware-version-updated == 'true'
+        if: matrix.platform == 'bsom' && steps.compile-bsom.outputs.firmware-version-updated == 'true'
         run: |
-          tar -czf debug-objects.tar.gz ${{ steps.compile.outputs.target-path }}
+          tar -czf debug-objects-bsom.tar.gz ${{ steps.compile-bsom.outputs.target-path }}
 
       - name: Create GitHub release
         id: release
-        if: steps.compile.outputs.firmware-version-updated == 'true'
+        if: matrix.platform == 'bsom' && steps.compile-bsom.outputs.firmware-version-updated == 'true'
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ${{ steps.compile.outputs.firmware-path }},debug-objects.tar.gz
+          artifacts: ${{ steps.compile-bsom.outputs.firmware-path }},debug-objects-bsom.tar.gz
           generateReleaseNotes: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release_notes == '' }}
           body: ${{ github.event.inputs.release_notes }}
-          name: "Firmware v${{ steps.compile.outputs.firmware-version }}"
-          tag: "v${{ steps.compile.outputs.firmware-version }}"
+          name: "Firmware v${{ steps.compile-bsom.outputs.firmware-version }}"
+          tag: "v${{ steps.compile-bsom.outputs.firmware-version }}"
           commit: ${{ steps.commit.outputs.updated-version-sha || github.sha }}
           token: ${{ steps.app-token.outputs.token }}
 
-  upload-to-particle:
-    name: Upload to Particle Projects
+  upload-bsom-to-particle:
+    name: Upload BSOM to Particle Projects
     needs: release
     runs-on: ubuntu-latest
     # Only run if release job has completed and the firmware version was updated
@@ -112,8 +134,6 @@ jobs:
             product_id_secret: "PARTICLE_GEMS_DEMO_PRODUCT_ID"
           - name: "Runk Lab (B SoM)"
             product_id_secret: "PARTICLE_RUNCK_LAB_BSOM_PRODUCT_ID"
-          #- name: "WinterTurf - v3 International"
-            #product_id_secret: "PARTICLE_WINTERTURF_INTERNATIONAL_PRODUCT_ID"
           - name: "WinterTurf - v3"
             product_id_secret: "PARTICLE_WINTERTURF_PRODUCT_ID"
           - name: "Plant Pathways"
@@ -124,29 +144,23 @@ jobs:
             product_id_secret: "PARTICLE_ROADSIDE_TURF_PRODUCT_ID"
           - name: "PepsiCo"
             product_id_secret: "PARTICLE_PEPSICO_PRODUCT_ID"
-          #- name: "Stellenbosch"
-            #product_id_secret: "PARTICLE_STELLENBOSCH_PRODUCT_ID"
-          #- name: "Runk Lab (B5 SoM)"
-            #product_id_secret: "PARTICLE_RUNCK_LAB_B5SOM_PRODUCT_ID"
-          #- name: "LCCMR Irrigation Sensing"
-            #product_id_secret: "PARTICLE_LCCMR_IRRIGATION_SENSING_PRODUCT_ID"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Download release artifacts
+      - name: Download BSOM release artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-artifacts
-          path: ./release
+          name: bsom-release-artifacts
+          path: ./bsom-release
 
-      - name: Find firmware binary
+      - name: Find BSOM firmware binary
         id: find_binary
         run: |
-          FIRMWARE=$(find ./release -name "*.bin" -type f | head -n 1)
+          FIRMWARE=$(find ./bsom-release -name "*.bin" -type f | head -n 1)
           echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
 
-      - name: Upload firmware to ${{ matrix.project.name }}
+      - name: Upload BSOM firmware to ${{ matrix.project.name }}
         uses: particle-iot/firmware-upload-action@v1
         with:
           particle-access-token: ${{ secrets.PARTICLE_ACCESS_TOKEN }}
@@ -158,4 +172,51 @@ jobs:
 
       - name: Log upload success
         run: |
-          echo "✅ Successfully uploaded firmware v${{ needs.release.outputs.firmware-version }} to ${{ matrix.project.name }}"
+          echo "✅ Successfully uploaded BSOM firmware v${{ needs.release.outputs.firmware-version }} to ${{ matrix.project.name }}"
+
+  upload-b5som-to-particle:
+    name: Upload B5SOM to Particle Projects
+    needs: release
+    runs-on: ubuntu-latest
+    # Only run if release job has completed and the firmware version was updated
+    if: needs.release.outputs.firmware-version-updated == 'true'
+    strategy:
+      matrix:
+        project:
+          - name: "WinterTurf - v3 International"
+            product_id_secret: "PARTICLE_WINTERTURF_INTERNATIONAL_PRODUCT_ID"
+          - name: "Stellenbosch"
+            product_id_secret: "PARTICLE_STELLENBOSCH_PRODUCT_ID"
+          - name: "Runk Lab (B5 SoM)"
+            product_id_secret: "PARTICLE_RUNCK_LAB_B5SOM_PRODUCT_ID"
+          - name: "LCCMR Irrigation Sensing"
+            product_id_secret: "PARTICLE_LCCMR_IRRIGATION_SENSING_PRODUCT_ID"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download B5SOM release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: b5som-release-artifacts
+          path: ./b5som-release
+
+      - name: Find B5SOM firmware binary
+        id: find_binary
+        run: |
+          FIRMWARE=$(find ./b5som-release -name "*.bin" -type f | head -n 1)
+          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+
+      - name: Upload B5SOM firmware to ${{ matrix.project.name }}
+        uses: particle-iot/firmware-upload-action@v1
+        with:
+          particle-access-token: ${{ secrets.PARTICLE_ACCESS_TOKEN }}
+          firmware-path: ${{ steps.find_binary.outputs.firmware-path }}
+          firmware-version: ${{ needs.release.outputs.firmware-version }}
+          product-id: ${{ secrets[matrix.project.product_id_secret] }}
+          title: 'Firmware v${{ needs.release.outputs.firmware-version }}'
+          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }})'
+
+      - name: Log upload success
+        run: |
+          echo "✅ Successfully uploaded B5SOM firmware v${{ needs.release.outputs.firmware-version }} to ${{ matrix.project.name }}"

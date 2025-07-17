@@ -4,6 +4,14 @@ name: Manual Compile
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: 'Platform to compile (bsom/b5som)'
+        required: true
+        default: 'bsom'
+        type: choice
+        options:
+          - bsom
+          - b5som
       branch:
         description: 'Branch to compile'
         required: false
@@ -25,12 +33,12 @@ jobs:
         id: compile
         uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
         with:
-          particle-platform-name: 'bsom'
+          particle-platform-name: ${{ github.event.inputs.platform }}
           device-os-version: 6.2.1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-binary
+          name: ${{ github.event.inputs.platform }}-firmware-binary
           path: ${{ steps.compile.outputs.firmware-path }}
           retention-days: 1

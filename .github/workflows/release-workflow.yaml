@@ -189,6 +189,8 @@ jobs:
             product_id_secret: "PARTICLE_ROADSIDE_TURF_PRODUCT_ID"
           - name: "PepsiCo"
             product_id_secret: "PARTICLE_PEPSICO_PRODUCT_ID"
+          - name: "Precision Ag Pilot"
+            product_id_secret: "PARTICLE_PRECISION_AG_PILOT_PRODUCT_ID"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

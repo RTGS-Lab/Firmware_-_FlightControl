@@ -67,7 +67,7 @@ jobs:
         uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
         with:
           particle-platform-name: 'b5som'
-          auto-version: false
+          auto-version: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.version_increment != 'no' }}
           device-os-version: 6.2.1
 
       - name: Upload BSOM artifacts
@@ -189,6 +189,8 @@ jobs:
             product_id_secret: "PARTICLE_ROADSIDE_TURF_PRODUCT_ID"
           - name: "PepsiCo"
             product_id_secret: "PARTICLE_PEPSICO_PRODUCT_ID"
+          - name: "Precision Ag Pilot"
+            product_id_secret: "PARTICLE_PRECISION_AG_PILOT_PRODUCT_ID"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

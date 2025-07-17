@@ -5,13 +5,14 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'Platform to compile (bsom/b5som)'
+        description: 'Platform to compile (bsom/b5som/both)'
         required: true
         default: 'bsom'
         type: choice
         options:
           - bsom
           - b5som
+          - both
       branch:
         description: 'Branch to compile'
         required: false
@@ -22,6 +23,9 @@ jobs:
   compile:
     name: Compile Firmware
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: ['bsom', 'b5som']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,16 +33,34 @@ jobs:
           submodules: recursive
           ref: ${{ github.event.inputs.branch || github.ref }}
 
-      - name: Compile application
-        id: compile
+      - name: Compile BSOM application
+        id: compile-bsom
+        if: matrix.platform == 'bsom' && (github.event.inputs.platform == 'bsom' || github.event.inputs.platform == 'both')
         uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
         with:
-          particle-platform-name: ${{ github.event.inputs.platform }}
+          particle-platform-name: 'bsom'
           device-os-version: 6.2.1
 
-      - name: Upload artifact
+      - name: Compile B5SOM application
+        id: compile-b5som
+        if: matrix.platform == 'b5som' && (github.event.inputs.platform == 'b5som' || github.event.inputs.platform == 'both')
+        uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
+        with:
+          particle-platform-name: 'b5som'
+          device-os-version: 6.2.1
+
+      - name: Upload BSOM artifact
+        if: matrix.platform == 'bsom' && (github.event.inputs.platform == 'bsom' || github.event.inputs.platform == 'both')
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.platform }}-firmware-binary
-          path: ${{ steps.compile.outputs.firmware-path }}
+          name: bsom-firmware-binary
+          path: ${{ steps.compile-bsom.outputs.firmware-path }}
+          retention-days: 1
+
+      - name: Upload B5SOM artifact
+        if: matrix.platform == 'b5som' && (github.event.inputs.platform == 'b5som' || github.event.inputs.platform == 'both')
+        uses: actions/upload-artifact@v4
+        with:
+          name: b5som-firmware-binary
+          path: ${{ steps.compile-b5som.outputs.firmware-path }}
           retention-days: 1

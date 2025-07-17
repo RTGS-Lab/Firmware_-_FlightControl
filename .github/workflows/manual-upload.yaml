@@ -68,7 +68,9 @@ jobs:
             FIRMWARE="${{ steps.compile.outputs.firmware-path }}"
           fi
           echo "Using firmware: $FIRMWARE"
-          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+          # Create a properly named firmware file
+          cp "$FIRMWARE" "firmware-${{ github.event.inputs.platform }}-${{ github.event.inputs.version }}.bin"
+          echo "firmware-path=firmware-${{ github.event.inputs.platform }}-${{ github.event.inputs.version }}.bin" >> $GITHUB_OUTPUT
 
       - name: Upload product firmware to Particle
         uses: particle-iot/firmware-upload-action@v1

@@ -103,27 +103,72 @@ jobs:
         run: |
           git push origin HEAD:${{ github.ref_name }}
 
-      - name: Create archive of target directory
+      - name: Create archive and rename firmware files for BSOM
         if: matrix.platform == 'bsom' && steps.compile-bsom.outputs.firmware-version-updated == 'true'
         run: |
           tar -czf debug-objects-bsom.tar.gz ${{ steps.compile-bsom.outputs.target-path }}
+          # Copy firmware binary with version in filename
+          cp ${{ steps.compile-bsom.outputs.firmware-path }} firmware-bsom-${{ steps.compile-bsom.outputs.firmware-version }}.bin
+
+      - name: Create archive and rename firmware files for B5SOM
+        if: matrix.platform == 'b5som'
+        run: |
+          tar -czf debug-objects-b5som.tar.gz ${{ steps.compile-b5som.outputs.target-path }}
+          # Copy firmware binary with version in filename
+          VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+          if [ "$VERSION" == "null" ] || [ -z "$VERSION" ]; then
+            VERSION="0.0.1"
+          fi
+          cp ${{ steps.compile-b5som.outputs.firmware-path }} firmware-b5som-$VERSION.bin
+
+      - name: Upload versioned firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-versioned-firmware
+          path: |
+            firmware-${{ matrix.platform }}-*.bin
+            debug-objects-${{ matrix.platform }}.tar.gz
+
+  create-release:
+    name: Create GitHub Release
+    needs: release
+    runs-on: ubuntu-latest
+    if: needs.release.outputs.firmware-version-updated == 'true'
+    outputs:
+      release-url: ${{ steps.release.outputs.html_url }}
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Download all versioned firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-files
+
+      - name: Prepare release artifacts
+        run: |
+          find ./release-files -name "*.bin" -o -name "*.tar.gz" | head -10
+          ls -la ./release-files/
 
       - name: Create GitHub release
         id: release
-        if: matrix.platform == 'bsom' && steps.compile-bsom.outputs.firmware-version-updated == 'true'
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ${{ steps.compile-bsom.outputs.firmware-path }},debug-objects-bsom.tar.gz
+          artifacts: ./release-files/**/*
           generateReleaseNotes: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release_notes == '' }}
           body: ${{ github.event.inputs.release_notes }}
-          name: "Firmware v${{ steps.compile-bsom.outputs.firmware-version }}"
-          tag: "v${{ steps.compile-bsom.outputs.firmware-version }}"
-          commit: ${{ steps.commit.outputs.updated-version-sha || github.sha }}
+          name: "Firmware v${{ needs.release.outputs.firmware-version }}"
+          tag: "v${{ needs.release.outputs.firmware-version }}"
           token: ${{ steps.app-token.outputs.token }}
 
   upload-bsom-to-particle:
     name: Upload BSOM to Particle Projects
-    needs: release
+    needs: [release, create-release]
     runs-on: ubuntu-latest
     # Only run if release job has completed and the firmware version was updated
     if: needs.release.outputs.firmware-version-updated == 'true'
@@ -158,7 +203,9 @@ jobs:
         id: find_binary
         run: |
           FIRMWARE=$(find ./bsom-release -name "*.bin" -type f | head -n 1)
-          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+          # Create a properly named firmware file
+          cp "$FIRMWARE" "firmware-bsom-${{ needs.release.outputs.firmware-version }}.bin"
+          echo "firmware-path=firmware-bsom-${{ needs.release.outputs.firmware-version }}.bin" >> $GITHUB_OUTPUT
 
       - name: Upload BSOM firmware to ${{ matrix.project.name }}
         uses: particle-iot/firmware-upload-action@v1
@@ -168,7 +215,7 @@ jobs:
           firmware-version: ${{ needs.release.outputs.firmware-version }}
           product-id: ${{ secrets[matrix.project.product_id_secret] }}
           title: 'Firmware v${{ needs.release.outputs.firmware-version }}'
-          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }})'
+          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.create-release.outputs.release-url }})'
 
       - name: Log upload success
         run: |
@@ -176,7 +223,7 @@ jobs:
 
   upload-b5som-to-particle:
     name: Upload B5SOM to Particle Projects
-    needs: release
+    needs: [release, create-release]
     runs-on: ubuntu-latest
     # Only run if release job has completed and the firmware version was updated
     if: needs.release.outputs.firmware-version-updated == 'true'
@@ -205,7 +252,9 @@ jobs:
         id: find_binary
         run: |
           FIRMWARE=$(find ./b5som-release -name "*.bin" -type f | head -n 1)
-          echo "firmware-path=$FIRMWARE" >> $GITHUB_OUTPUT
+          # Create a properly named firmware file
+          cp "$FIRMWARE" "firmware-b5som-${{ needs.release.outputs.firmware-version }}.bin"
+          echo "firmware-path=firmware-b5som-${{ needs.release.outputs.firmware-version }}.bin" >> $GITHUB_OUTPUT
 
       - name: Upload B5SOM firmware to ${{ matrix.project.name }}
         uses: particle-iot/firmware-upload-action@v1
@@ -215,7 +264,7 @@ jobs:
           firmware-version: ${{ needs.release.outputs.firmware-version }}
           product-id: ${{ secrets[matrix.project.product_id_secret] }}
           title: 'Firmware v${{ needs.release.outputs.firmware-version }}'
-          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.release.outputs.release-url }})'
+          description: '[Firmware v${{ needs.release.outputs.firmware-version }} GitHub Release](${{ needs.create-release.outputs.release-url }})'
 
       - name: Log upload success
         run: |

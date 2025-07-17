@@ -146,7 +146,7 @@ namespace LogModes {
 	constexpr uint8_t NO_LOCAL = 3; //Same as standard log, but no attempt to log to SD card
 };
 
-PRODUCT_VERSION(37)
+PRODUCT_VERSION(38)
 
 //global variables affected by configuration manager
 int backhaulCount;

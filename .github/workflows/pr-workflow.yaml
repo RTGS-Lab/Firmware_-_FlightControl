@@ -53,24 +53,45 @@ jobs:
     name: Compile Firmware
     needs: test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: ['bsom', 'b5som']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Compile application
-        id: compile
+      - name: Compile BSOM application
+        id: compile-bsom
+        if: matrix.platform == 'bsom'
         uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
         with:
           particle-platform-name: 'bsom'
           device-os-version: 6.2.1
 
-      - name: Upload artifact
+      - name: Compile B5SOM application
+        id: compile-b5som
+        if: matrix.platform == 'b5som'
+        uses: particle-iot/compile-action@9dbe1eb567c6268f1baa7458217d5d6e5553850d
+        with:
+          particle-platform-name: 'b5som'
+          device-os-version: 6.2.1
+
+      - name: Upload BSOM artifact
+        if: matrix.platform == 'bsom'
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-artifact
-          path: ${{ steps.compile.outputs.firmware-path }}
+          name: bsom-firmware-artifact
+          path: ${{ steps.compile-bsom.outputs.firmware-path }}
+          retention-days: 1
+
+      - name: Upload B5SOM artifact
+        if: matrix.platform == 'b5som'
+        uses: actions/upload-artifact@v4
+        with:
+          name: b5som-firmware-artifact
+          path: ${{ steps.compile-b5som.outputs.firmware-path }}
           retention-days: 1
 
   flash:
@@ -78,10 +99,10 @@ jobs:
     needs: compile
     runs-on: ubuntu-latest
     steps:
-      - name: Download firmware artifact
+      - name: Download BSOM firmware artifact
         uses: actions/download-artifact@v4
         with:
-          name: firmware-artifact
+          name: bsom-firmware-artifact
           path: ./firmware
 
       - name: Find firmware binary

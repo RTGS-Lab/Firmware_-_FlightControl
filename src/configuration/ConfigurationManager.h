@@ -51,6 +51,11 @@ public:
     int updateSystemConfigurationUid() override;
     int updateSensorConfigurationUid() override;
     
+    // EEPROM backup methods
+    bool saveConfigToEEPROM();
+    bool loadConfigFromEEPROM();
+    void clearConfigEEPROM();
+    
     // System configuration getters
     unsigned long getLogPeriod() const { return m_logPeriod; }
     int getBackhaulCount() const { return m_backhaulCount; }
@@ -83,6 +88,13 @@ public:
     static std::unique_ptr<BaroVue10> createPressureSensor(SDI12Talon& talon);
     
 private:
+    // EEPROM addresses for configuration backup
+    static const int EEPROM_CONFIG_START = 16;  // Start at address 16 (after accel offsets at 0-11)
+    static const int EEPROM_SYSTEM_UID_ADDR = EEPROM_CONFIG_START;
+    static const int EEPROM_SENSOR_UID_ADDR = EEPROM_CONFIG_START + 4;
+    static const int EEPROM_CONFIG_VALID_FLAG = EEPROM_CONFIG_START + 8;
+    static const uint8_t EEPROM_VALID_MARKER = 0xAB;  // Magic number to validate EEPROM data
+    
     // System configuration
     unsigned long m_logPeriod;
     int m_backhaulCount;

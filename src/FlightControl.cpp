@@ -1076,6 +1076,40 @@ void systemConfig()
 					Serial.println("\tDone");
 				}
 
+				if(ReadString.equalsIgnoreCase("Dump SD")) {
+					fileSys.dumpSDOverSerial();
+					Serial.println("\tDump Complete");
+				}
+
+				if(ReadString.startsWith("Dump SD Recent ")) {
+					String countStr = ReadString.substring(15); // "Dump SD Recent " is 15 chars
+					uint32_t count = countStr.toInt();
+					if (count > 0) {
+						fileSys.dumpSDOverSerial(count);
+						Serial.print("\tDump Complete (");
+						Serial.print(count);
+						Serial.println(" recent files per type)");
+					} else {
+						Serial.println("\tInvalid count parameter");
+					}
+				}
+
+				if(ReadString.startsWith("Write SD ")) {
+					String filename = ReadString.substring(9); // "Write SD " is 9 chars
+					filename.trim();
+					if (filename.length() > 0) {
+						Serial.print("\tStarting file write: ");
+						Serial.println(filename);
+						if (fileSys.writeFileOverSerial(filename.c_str())) {
+							Serial.println("\tWrite Complete");
+						} else {
+							Serial.println("\tWrite Failed");
+						}
+					} else {
+						Serial.println("\tInvalid filename parameter");
+					}
+				}
+
 				if(ReadString.equalsIgnoreCase("Exit")) {
 					return; //Exit the setup function
 				}

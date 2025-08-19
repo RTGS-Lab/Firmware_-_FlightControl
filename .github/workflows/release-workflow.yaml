@@ -107,19 +107,21 @@ jobs:
         if: matrix.platform == 'bsom' && steps.compile-bsom.outputs.firmware-version-updated == 'true'
         run: |
           tar -czf debug-objects-bsom.tar.gz ${{ steps.compile-bsom.outputs.target-path }}
-          # Copy firmware binary with version in filename
-          cp ${{ steps.compile-bsom.outputs.firmware-path }} firmware-bsom-${{ steps.compile-bsom.outputs.firmware-version }}.bin
+          # Copy firmware binary with version and OS version in filename
+          cp ${{ steps.compile-bsom.outputs.firmware-path }} firmware-bsom-${{ steps.compile-bsom.outputs.firmware-version }}-6.2.1.bin
 
       - name: Create archive and rename firmware files for B5SOM
         if: matrix.platform == 'b5som'
         run: |
           tar -czf debug-objects-b5som.tar.gz ${{ steps.compile-b5som.outputs.target-path }}
-          # Copy firmware binary with version in filename
-          VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name' | sed 's/^v//')
-          if [ "$VERSION" == "null" ] || [ -z "$VERSION" ]; then
-            VERSION="0.0.1"
+          # Copy firmware binary with version and OS version in filename
+          # Use the firmware version from the B5SOM compile step
+          VERSION="${{ steps.compile-b5som.outputs.firmware-version }}"
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: Could not determine firmware version from B5SOM compile step"
+            exit 1
           fi
-          cp ${{ steps.compile-b5som.outputs.firmware-path }} firmware-b5som-$VERSION.bin
+          cp ${{ steps.compile-b5som.outputs.firmware-path }} firmware-b5som-$VERSION-6.2.1.bin
 
       - name: Upload versioned firmware artifacts
         uses: actions/upload-artifact@v4
@@ -143,9 +145,16 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           permission-contents: write
 
-      - name: Download all versioned firmware artifacts
+      - name: Download BSOM versioned firmware artifacts
         uses: actions/download-artifact@v4
         with:
+          name: bsom-versioned-firmware
+          path: ./release-files
+
+      - name: Download B5SOM versioned firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: b5som-versioned-firmware
           path: ./release-files
 
       - name: Prepare release artifacts
@@ -157,7 +166,7 @@ jobs:
         id: release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./release-files/**/*.bin
+          artifacts: ./release-files/*.bin
           generateReleaseNotes: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.release_notes == '' }}
           body: ${{ github.event.inputs.release_notes }}
           name: "Firmware v${{ needs.release.outputs.firmware-version }}"
@@ -207,9 +216,9 @@ jobs:
         id: find_binary
         run: |
           FIRMWARE=$(find ./bsom-release -name "*.bin" -type f | head -n 1)
-          # Create a properly named firmware file
-          cp "$FIRMWARE" "firmware-bsom-${{ needs.release.outputs.firmware-version }}.bin"
-          echo "firmware-path=firmware-bsom-${{ needs.release.outputs.firmware-version }}.bin" >> $GITHUB_OUTPUT
+          # Create a properly named firmware file with OS version
+          cp "$FIRMWARE" "firmware-bsom-${{ needs.release.outputs.firmware-version }}-6.2.1.bin"
+          echo "firmware-path=firmware-bsom-${{ needs.release.outputs.firmware-version }}-6.2.1.bin" >> $GITHUB_OUTPUT
 
       - name: Upload BSOM firmware to ${{ matrix.project.name }}
         uses: particle-iot/firmware-upload-action@v1
@@ -256,9 +265,9 @@ jobs:
         id: find_binary
         run: |
           FIRMWARE=$(find ./b5som-release -name "*.bin" -type f | head -n 1)
-          # Create a properly named firmware file
-          cp "$FIRMWARE" "firmware-b5som-${{ needs.release.outputs.firmware-version }}.bin"
-          echo "firmware-path=firmware-b5som-${{ needs.release.outputs.firmware-version }}.bin" >> $GITHUB_OUTPUT
+          # Create a properly named firmware file with OS version
+          cp "$FIRMWARE" "firmware-b5som-${{ needs.release.outputs.firmware-version }}-6.2.1.bin"
+          echo "firmware-path=firmware-b5som-${{ needs.release.outputs.firmware-version }}-6.2.1.bin" >> $GITHUB_OUTPUT
 
       - name: Upload B5SOM firmware to ${{ matrix.project.name }}
         uses: particle-iot/firmware-upload-action@v1

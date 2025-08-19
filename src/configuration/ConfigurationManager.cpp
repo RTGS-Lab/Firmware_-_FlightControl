@@ -6,13 +6,33 @@
  */
 
  #include "ConfigurationManager.h"
+ #include <algorithm>
+ #include <cctype>
+ 
+ #ifndef TESTING
+ #include "Particle.h"
+ #else
+ #include "MockParticle.h"
+ #endif
+
+ // Static member definitions
+ const int ConfigurationManager::EEPROM_CONFIG_START;
+ const int ConfigurationManager::EEPROM_SYSTEM_UID_ADDR;
+ const int ConfigurationManager::EEPROM_SENSOR_UID_ADDR;
+ const int ConfigurationManager::EEPROM_CONFIG_VALID_FLAG;
+ const uint8_t ConfigurationManager::EEPROM_VALID_MARKER;
 
  ConfigurationManager::ConfigurationManager() {};
  
 
  bool ConfigurationManager::setConfiguration(std::string config) {
      // Parse and apply the configuration
-     return parseConfiguration(config);
+     bool success = parseConfiguration(config);
+     if (success) {
+         // Save to EEPROM as backup
+         saveConfigToEEPROM();
+     }
+     return success;
  }
  
  std::string ConfigurationManager::getConfiguration() {
@@ -23,8 +43,22 @@
      config += "\"logPeriod\":" + std::to_string(m_logPeriod) + ",";
      config += "\"backhaulCount\":" + std::to_string(m_backhaulCount) + ",";
      config += "\"powerSaveMode\":" + std::to_string(m_powerSaveMode) + ",";
-     config += "\"loggingMode\":" + std::to_string(m_loggingMode);
-     config += "}}";
+     config += "\"loggingMode\":" + std::to_string(m_loggingMode) + ",";
+     config += "\"numAuxTalons\":" + std::to_string(m_numAuxTalons) + ",";
+     config += "\"numI2CTalons\":" + std::to_string(m_numI2CTalons) + ",";
+     config += "\"numSDI12Talons\":" + std::to_string(m_numSDI12Talons);
+     config += "},";
+     
+     // Sensor configuration
+     config += "\"sensors\":{";
+     config += "\"numET\":" + std::to_string(m_numET) + ",";
+     config += "\"numHaar\":" + std::to_string(m_numHaar) + ",";
+     config += "\"numSoil\":" + std::to_string(m_numSoil) + ",";
+     config += "\"numApogeeSolar\":" + std::to_string(m_numApogeeSolar) + ",";
+     config += "\"numCO2\":" + std::to_string(m_numCO2) + ",";
+     config += "\"numO2\":" + std::to_string(m_numO2) + ",";
+     config += "\"numPressure\":" + std::to_string(m_numPressure);
+     config += "}}}";
      
      return config;
  }
@@ -55,12 +89,18 @@
  
 
  bool ConfigurationManager::parseConfiguration(const std::string& configStr) {
+     // Remove all whitespace characters from the config string
+     std::string cleanedConfig = configStr;
+     cleanedConfig.erase(std::remove_if(cleanedConfig.begin(), cleanedConfig.end(),
+                                        [](char c) { return std::isspace(c); }),
+                         cleanedConfig.end());
+     
      // Find the system configuration section
-     size_t systemStart = configStr.find("\"system\":{");
+     size_t systemStart = cleanedConfig.find("\"system\":{");
      if (systemStart != std::string::npos) {
-         size_t systemEnd = findMatchingBracket(configStr, systemStart + 9);
+         size_t systemEnd = findMatchingBracket(cleanedConfig, systemStart + 9);
          if (systemEnd > 0) {
-             std::string systemJson = configStr.substr(systemStart + 9, systemEnd - (systemStart + 9));
+             std::string systemJson = cleanedConfig.substr(systemStart + 9, systemEnd - (systemStart + 9));
              
              // Parse system settings
              m_logPeriod = extractJsonIntField(systemJson, "logPeriod", 300);
@@ -75,11 +115,11 @@
          }
      }
      // Find the sensor configuration section
-     size_t sensorsStart = configStr.find("\"sensors\":{");
+     size_t sensorsStart = cleanedConfig.find("\"sensors\":{");
      if (sensorsStart != std::string::npos) {
-         size_t sensorsEnd = findMatchingBracket(configStr, sensorsStart + 10);
+         size_t sensorsEnd = findMatchingBracket(cleanedConfig, sensorsStart + 10);
          if (sensorsEnd > 0) {
-             std::string sensorsJson = configStr.substr(sensorsStart + 10, sensorsEnd - (sensorsStart + 10));
+             std::string sensorsJson = cleanedConfig.substr(sensorsStart + 10, sensorsEnd - (sensorsStart + 10));
             
              // Parse sensor settings
              m_numET = extractJsonIntField(sensorsJson, "numET", 0);
@@ -201,4 +241,59 @@ std::unique_ptr<LI710> ConfigurationManager::createETSensor(ITimeProvider& timeP
 
 std::unique_ptr<BaroVue10> ConfigurationManager::createPressureSensor(SDI12Talon& talon) {
     return std::make_unique<BaroVue10>(talon, 0, 0x00); // Default ports and version
+}
+
+// EEPROM backup functionality
+bool ConfigurationManager::saveConfigToEEPROM() {
+    // Write system and sensor UIDs (they encode all the config values)
+    EEPROM.put(EEPROM_SYSTEM_UID_ADDR, m_SystemConfigUid);
+    EEPROM.put(EEPROM_SENSOR_UID_ADDR, m_SensorConfigUid);
+    
+    // Write valid flag to indicate EEPROM contains valid config
+    EEPROM.put(EEPROM_CONFIG_VALID_FLAG, EEPROM_VALID_MARKER);
+    
+    return true;
+}
+
+bool ConfigurationManager::loadConfigFromEEPROM() {
+    // Check if EEPROM contains valid configuration
+    uint8_t validFlag;
+    EEPROM.get(EEPROM_CONFIG_VALID_FLAG, validFlag);
+    if (validFlag != EEPROM_VALID_MARKER) {
+        return false; // No valid config in EEPROM
+    }
+    
+    // Read UIDs from EEPROM
+    int systemUid, sensorUid;
+    EEPROM.get(EEPROM_SYSTEM_UID_ADDR, systemUid);
+    EEPROM.get(EEPROM_SENSOR_UID_ADDR, sensorUid);
+    
+    // Decode system UID back to configuration values (reverse of updateSystemConfigurationUid)
+    m_logPeriod = (systemUid >> 16) & 0xFFFF;
+    m_backhaulCount = (systemUid >> 12) & 0xF;
+    m_powerSaveMode = (systemUid >> 10) & 0x3;
+    m_loggingMode = (systemUid >> 8) & 0x3;
+    m_numAuxTalons = (systemUid >> 6) & 0x3;
+    m_numI2CTalons = (systemUid >> 4) & 0x3;
+    m_numSDI12Talons = (systemUid >> 2) & 0x3;
+    
+    // Decode sensor UID back to configuration values (reverse of updateSensorConfigurationUid)
+    m_numET = (sensorUid >> 28) & 0xF;
+    m_numHaar = (sensorUid >> 24) & 0xF;
+    m_numSoil = (sensorUid >> 20) & 0xF;
+    m_numApogeeSolar = (sensorUid >> 16) & 0xF;
+    m_numCO2 = (sensorUid >> 12) & 0xF;
+    m_numO2 = (sensorUid >> 8) & 0xF;
+    m_numPressure = (sensorUid >> 4) & 0xF;
+    
+    // Store the UIDs
+    m_SystemConfigUid = systemUid;
+    m_SensorConfigUid = sensorUid;
+    
+    return true;
+}
+
+void ConfigurationManager::clearConfigEEPROM() {
+    // Clear the valid flag to invalidate EEPROM config
+    EEPROM.put(EEPROM_CONFIG_VALID_FLAG, (uint8_t)0x00);
 }

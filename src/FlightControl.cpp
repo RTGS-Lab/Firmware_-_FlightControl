@@ -841,7 +841,9 @@ String getMetadataString()
 	output = output + "\"Update\":" + String(logPeriod) + ",";
 	output = output + "\"Backhaul\":" + String(backhaulCount) + ",";
 	output = output + "\"LogMode\":" + String(loggingMode) + ",";
-	output = output + "\"Sleep\":" + String(powerSaveMode) + "}},";
+	output = output + "\"Sleep\":" + String(powerSaveMode) + ",";
+	output = output + "\"SysConfigUID\":" + String(configManager.updateSystemConfigurationUid()) + ",";
+	output = output + "\"SensorConfigUID\":" + String(configManager.updateSensorConfigurationUid()) + "}},";
 	//FIX! Add support for device name 
 	
 	uint8_t deviceCount = 0; //Used to keep track of how many devices have been appended 
@@ -1072,6 +1074,40 @@ void systemConfig()
 				if(ReadString.equalsIgnoreCase("Clear Accel Zero")) {
 					logger.zeroAccel(true);
 					Serial.println("\tDone");
+				}
+
+				if(ReadString.equalsIgnoreCase("Dump SD")) {
+					fileSys.dumpSDOverSerial();
+					Serial.println("\tDump Complete");
+				}
+
+				if(ReadString.startsWith("Dump SD Recent ")) {
+					String countStr = ReadString.substring(15); // "Dump SD Recent " is 15 chars
+					uint32_t count = countStr.toInt();
+					if (count > 0) {
+						fileSys.dumpSDOverSerial(count);
+						Serial.print("\tDump Complete (");
+						Serial.print(count);
+						Serial.println(" recent files per type)");
+					} else {
+						Serial.println("\tInvalid count parameter");
+					}
+				}
+
+				if(ReadString.startsWith("Write SD ")) {
+					String filename = ReadString.substring(9); // "Write SD " is 9 chars
+					filename.trim();
+					if (filename.length() > 0) {
+						Serial.print("\tStarting file write: ");
+						Serial.println(filename);
+						if (fileSys.writeFileOverSerial(filename.c_str())) {
+							Serial.println("\tWrite Complete");
+						} else {
+							Serial.println("\tWrite Failed");
+						}
+					} else {
+						Serial.println("\tInvalid filename parameter");
+					}
 				}
 
 				if(ReadString.equalsIgnoreCase("Exit")) {
@@ -1346,15 +1382,17 @@ int setNodeID(String nodeID)
 
 int updateConfiguration(String configJson) {
 	if(configJson == "remove") {
-		// Remove the configuration file from the SD card
-		if (!fileSys.removeFileFromSD("config.json")) {
-			Serial.println("Error: Failed to remove configuration from SD card.");
-			return -1; // Failed to remove config
+		// Remove the configuration file from the SD card and clear EEPROM
+		bool sdRemoved = fileSys.removeFileFromSD("config.json");
+		configManager.clearConfigEEPROM();
+		
+		if (sdRemoved) {
+			Serial.println("Configuration removed from SD card and EEPROM.");
+			return 0; // Success
+		} else {
+			Serial.println("Warning: Failed to remove SD config, but EEPROM cleared.");
+			return 0; // Still success since EEPROM was cleared
 		}
-		else {
-			Serial.println("Configuration removed from SD card.");
-		}
-		return 0; // Success
 	}
 
     Serial.println("Updating configuration...");
@@ -1382,24 +1420,30 @@ int updateConfiguration(String configJson) {
 		return -4; // Invalid format
 	}
 
-	// test write to SD card
-	if (!fileSys.writeToSD("", "config.json")) {
-		Serial.println("Error: Failed to write to SD card.");
-		return -5; // Failed to write config
+	// First, try to parse and apply the configuration (this will also save to EEPROM)
+	bool configParsed = configManager.setConfiguration(configJson.c_str());
+	if (!configParsed) {
+		Serial.println("Error: Failed to parse configuration.");
+		return -8; // Failed to parse config
 	}
+	Serial.println("Configuration parsed successfully and saved to EEPROM.");
 
-	//clear current config.json
-	if(!fileSys.removeFileFromSD("config.json")) {
-		Serial.println("Error: Failed to remove current configuration from SD card.");
-		return -6; // Failed to remove current config
-	}
+	// Try to write to SD card (optional - don't fail if this doesn't work)
+	bool sdSuccess = false;
+	
+	// Remove old config first
+	fileSys.removeFileFromSD("config.json"); // Don't check return value
 	
 	// Write new configuration to SD card
-	if (!fileSys.writeToSD(configJson.c_str(), "config.json")) {
-		Serial.println("Error: Failed to write new configuration to SD card.");
-		return -7; // Failed to write new config
+	if (fileSys.writeToSD(configJson.c_str(), "config.json")) {
+		Serial.println("Configuration written to SD card.");
+		sdSuccess = true;
+	} else {
+		Serial.println("Warning: Failed to write configuration to SD card, but EEPROM backup is available.");
 	}
 
+	// Success if config was parsed (EEPROM updated), regardless of SD card status
+	Serial.println("Configuration update completed. System will restart to apply changes.");
 	System.reset(); //restart the system to apply new configuration
 	return 1; //Success
 }
@@ -1524,12 +1568,34 @@ bool loadConfiguration() {
         configLoaded = configManager.setConfiguration(configStr);
     }
     
+    // If SD card config failed, try EEPROM backup
+    if (!configLoaded) {
+        Serial.println("SD config failed, trying EEPROM backup...");
+        configLoaded = configManager.loadConfigFromEEPROM();
+        if (configLoaded) {
+            Serial.println("Configuration loaded from EEPROM backup");
+            // Restore the config to SD card from EEPROM backup
+            std::string eepromConfig = configManager.getConfiguration();
+            if (fileSys.writeToSD(eepromConfig.c_str(), "config.json")) {
+                Serial.println("EEPROM config restored to SD card");
+            } else {
+                Serial.println("Warning: Could not restore config to SD card");
+            }
+        }
+    }
+    
+    // If both SD and EEPROM failed, use defaults
     if (!configLoaded) {
         Serial.println("Loading default configuration...");
         std::string defaultConfig = configManager.getDefaultConfigurationJson();
         configLoaded = configManager.setConfiguration(defaultConfig);
-        fileSys.removeFileFromSD("config.json");
-        fileSys.writeToSD(defaultConfig.c_str(), "config.json");
+        // Only write default config to SD if no config file exists, not if parsing failed
+        if (configStr.empty()) {
+            Serial.println("No config file found, writing default config to SD card...");
+            fileSys.writeToSD(defaultConfig.c_str(), "config.json");
+        } else {
+            Serial.println("Config file exists but parsing failed, keeping existing file on SD card");
+        }
     }
     
     // Set global variables from configuration

@@ -181,14 +181,18 @@ jobs:
             product_id_secret: "PARTICLE_WINTERTURF_PRODUCT_ID"
           - name: "Plant Pathways"
             product_id_secret: "PARTICLE_PLANT_PATHWAYS_PRODUCT_ID"
-          - name: "LCCMR Irrigation"
-            product_id_secret: "PARTICLE_LCCMR_IRRIGATION_PRODUCT_ID"
+          - name: "Sharma V3 Irrigation"
+            product_id_secret: "PARTICLE_SHARMA_V3_IRRIGATION_PRODUCT_ID"
           - name: "Roadside Turf"
             product_id_secret: "PARTICLE_ROADSIDE_TURF_PRODUCT_ID"
           - name: "PepsiCo"
             product_id_secret: "PARTICLE_PEPSICO_PRODUCT_ID"
           - name: "Precision Ag Pilot"
             product_id_secret: "PARTICLE_PRECISION_AG_PILOT_PRODUCT_ID"
+          - name: "Turf Disease Pilot"
+            product_id_secret: "PARTICLE_TURF_DISEASE_PILOT_PRODUCT_ID"
+          - name: "Legacy Irrigation"
+            product_id_secret: "PARTICLE_LEGACY_IRRIGATION_PRODUCT_ID"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

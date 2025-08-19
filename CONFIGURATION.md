@@ -4,18 +4,21 @@
 
 Configuration is loaded at startup in the following priority order:
 
-1. **SD Card**: `config.json` file on the SD card
-2. **Default**: Built-in default configuration if SD file not found
+1. **SD Card**: `config.json` file on the SD card (primary storage)
+2. **EEPROM Backup**: Configuration restored from EEPROM if SD card fails
+3. **Default**: Built-in default configuration if both SD and EEPROM unavailable
+
+The system automatically creates EEPROM backups when configurations are successfully loaded from SD card or applied via cloud functions. When EEPROM backup is used, the configuration is automatically restored to the SD card.
 
 #### Updating Configuration
 
 Configuration can be updated through:
 
 1. **Cloud Function**: `updateConfig` Particle function
-     - copy the intended config.json and paste it as and argument into updateConfig
-     - If successful, the device will restart without returning any value.
-     - verify that the first metadata packet after reset matches your configuration
-     - See below for other types of responses.
+     - Configuration is always saved to EEPROM backup for reliability
+     - SD card is updated when possible, but function succeeds if EEPROM update works
+     - Device will restart automatically on successful configuration update
+     - Verify success by checking metadata packet includes new configuration UIDs
 3. **SD Card**: Replace `config.json` file and restart system
 
 #### updateConfig Function Details
@@ -50,15 +53,12 @@ The function returns specific error codes when configuration updates fail:
 
 | Error Code | Description | Troubleshooting |
 |------------|-------------|-----------------|
-| `0` | Success - Configuration removed from SD card | |
-| `1` | Success - Configuration updated, system restarting | |
-| `-1` | Failed to remove configuration from SD card | |
-| `-2` | Invalid configuration format - Missing 'config' element | |
-| `-3` | Invalid configuration format - Missing 'system' element | |
-| `-4` | Invalid configuration format - Missing 'sensors' element | |
-| `-5` | Failed to write test file to SD card | |
-| `-6` | Failed to remove current configuration from SD card | |
-| `-7` | Failed to write new configuration to SD card | |
+| `0` | Success - Configuration removed from SD card and EEPROM | |
+| `1` | Success - Configuration updated and saved to EEPROM, system restarting | May show SD card warnings but still succeeds |
+| `-2` | Invalid configuration format - Missing 'config' element | Check JSON structure |
+| `-3` | Invalid configuration format - Missing 'system' element | Ensure 'system' section exists |
+| `-4` | Invalid configuration format - Missing 'sensors' element | Ensure 'sensors' section exists |
+| `-8` | Failed to parse configuration - Invalid JSON or values | Check JSON syntax and parameter ranges |
 
 ##### Configuration Validation Rules
 
@@ -70,13 +70,14 @@ The system performs several validation checks:
    - Must contain "sensors" section within config (checked by string search)
    - All whitespace, newlines, carriage returns, and tabs are automatically stripped
 
-2. **SD Card Validation**
-   - SD card must be accessible for writing
-   - System tests write capability before attempting configuration update
-   - Current configuration must be removable before writing new configuration
+2. **Configuration Processing**
+   - Configuration is parsed and applied first (automatically saves to EEPROM backup)
+   - SD card is updated when possible, but failures don't prevent success
+   - System succeeds if configuration parsing works, regardless of SD card status
+   - Warning messages indicate SD card issues but don't cause operation failure
 
 3. **Special Commands**
-   - Use "remove" as the configuration string to delete config.json and revert to defaults
+   - Use "remove" as the configuration string to delete config.json and clear EEPROM backup
 
 ##### Example Error Scenarios
 
@@ -92,17 +93,25 @@ particle call device_name updateConfig '{"config":{"system":{"logPeriod":300}}}'
 # Returns: -4
 ```
 
-###### SD Card Issues
+###### SD Card Issues (Non-Critical)
 ```bash
-# If SD card is not available or full
-particle call device_name updateConfig '{"config":{"system":{"logPeriod":300},"sensors":{}}}'
-# May return: -5, -6, or -7 depending on the specific SD card failure point
+# Configuration update succeeds even if SD card fails
+particle call device_name updateConfig '{"config":{"system":{"logPeriod":300},"sensors":{"numSoil":3}}}'
+# Returns: 1 (success) - Configuration saved to EEPROM, may show SD warnings in logs
+# Serial output: "Warning: Failed to write configuration to SD card, but EEPROM backup is available."
 ```
 
 ###### Configuration Removal
 ```bash
 particle call device_name updateConfig 'remove'
-# Returns: 0 (success) or -1 (failed to remove)
+# Returns: 0 (success) - Removes SD config and clears EEPROM backup
+```
+
+###### Parsing Failures (Critical)
+```bash
+# Invalid JSON structure causes complete failure
+particle call device_name updateConfig '{"config":{"system":{"logPeriod":"invalid"}}}'
+# Returns: -8 (failed to parse configuration)
 ```
 
 ##### Best Practices
@@ -111,7 +120,9 @@ particle call device_name updateConfig 'remove'
 2. **Check Parameter Ranges**: Verify all values are within acceptable ranges
 3. **Plan Hardware Requirements**: Ensure sufficient Talons for sensor configuration
 4. **Monitor Device Status**: Watch for restart after successful configuration
-5. **Verify Configuration**: Check UIDs after restart to confirm changes applied
+5. **Verify Configuration**: Check UIDs in metadata packets to confirm changes applied
+6. **EEPROM Backup Reliability**: Configuration updates work even with SD card failures
+7. **Field Recovery**: Insert fresh SD cards - system automatically restores config from EEPROM
 
 #### Configuration UIDs
 

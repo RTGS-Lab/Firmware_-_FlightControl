@@ -16,6 +16,7 @@
 #include <T9602.h>
 #include <Li710.h>
 #include <BaroVue10.h>
+#include <SQ202X.h>
 
 class ConfigurationManager : public IConfiguration {
 public:
@@ -44,7 +45,8 @@ public:
                "\"numApogeeSolar\":0,"
                "\"numCO2\":0,"
                "\"numO2\":0,"
-               "\"numPressure\":0"
+               "\"numPressure\":0,"
+               "\"numApogeeAnalog\":0"
                "}"
                "}}";
     }
@@ -73,6 +75,7 @@ public:
     int getNumCO2() const { return m_numCO2; }
     int getNumO2() const { return m_numO2; }
     int getNumPressure() const { return m_numPressure; }
+    int getNumApogeeAnalog() const { return m_numApogeeAnalog; }
     
     // Static factory methods for creating sensors
     static std::unique_ptr<AuxTalon> createAuxTalon();
@@ -86,6 +89,7 @@ public:
     static std::unique_ptr<T9602> createHumiditySensor();
     static std::unique_ptr<LI710> createETSensor(class ITimeProvider& timeProvider, class ISDI12Talon& talon);
     static std::unique_ptr<BaroVue10> createPressureSensor(SDI12Talon& talon);
+    static std::unique_ptr<SQ202X> createSQ202XSensor(SDI12Talon& talon);
     
 private:
     // EEPROM addresses for configuration backup
@@ -112,6 +116,7 @@ private:
     int m_numCO2;
     int m_numO2;
     int m_numPressure;
+    int m_numApogeeAnalog;
 
     int m_SystemConfigUid;
     int m_SensorConfigUid;

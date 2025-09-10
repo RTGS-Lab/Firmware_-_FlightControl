@@ -57,7 +57,8 @@
      config += "\"numApogeeSolar\":" + std::to_string(m_numApogeeSolar) + ",";
      config += "\"numCO2\":" + std::to_string(m_numCO2) + ",";
      config += "\"numO2\":" + std::to_string(m_numO2) + ",";
-     config += "\"numPressure\":" + std::to_string(m_numPressure);
+     config += "\"numPressure\":" + std::to_string(m_numPressure) + ",";
+     config += "\"numApogeeAnalog\":" + std::to_string(m_numApogeeAnalog);
      config += "}}}";
      
      return config;
@@ -83,6 +84,7 @@
     tempUid |= m_numCO2 << 12;
     tempUid |= m_numO2 << 8;
     tempUid |= m_numPressure << 4;
+    tempUid |= (m_numApogeeAnalog & 0x1) << 3;  // Use only bit 3
     m_SensorConfigUid = tempUid; 
     return m_SensorConfigUid;
  }
@@ -129,6 +131,9 @@
              m_numCO2 = extractJsonIntField(sensorsJson, "numCO2", 0);
              m_numO2 = extractJsonIntField(sensorsJson, "numO2", 0);
              m_numPressure = extractJsonIntField(sensorsJson, "numPressure", 0);
+             m_numApogeeAnalog = extractJsonIntField(sensorsJson, "numApogeeAnalog", 0);
+             // Bounds checking - ApogeeAnalog is limited to 0 or 1 (single bit, single port 4)
+             if (m_numApogeeAnalog > 1) m_numApogeeAnalog = 1;
             
              updateSensorConfigurationUid();
          }
@@ -243,6 +248,10 @@ std::unique_ptr<BaroVue10> ConfigurationManager::createPressureSensor(SDI12Talon
     return std::make_unique<BaroVue10>(talon, 0, 0x00); // Default ports and version
 }
 
+std::unique_ptr<SQ202X> ConfigurationManager::createSQ202XSensor(SDI12Talon& talon) {
+    return std::make_unique<SQ202X>(talon, 0, 4, 0x00); // Default talon port, sensor port 4, version
+}
+
 // EEPROM backup functionality
 bool ConfigurationManager::saveConfigToEEPROM() {
     // Write system and sensor UIDs (they encode all the config values)
@@ -285,6 +294,7 @@ bool ConfigurationManager::loadConfigFromEEPROM() {
     m_numCO2 = (sensorUid >> 12) & 0xF;
     m_numO2 = (sensorUid >> 8) & 0xF;
     m_numPressure = (sensorUid >> 4) & 0xF;
+    m_numApogeeAnalog = (sensorUid >> 3) & 0x1;  // Extract single bit
     
     // Store the UIDs
     m_SystemConfigUid = systemUid;

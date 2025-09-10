@@ -61,6 +61,10 @@ void SensorManager::initializeSensorsOnly(ITimeProvider& timeProvider, ISDI12Tal
         for (int i = 0; i < configManager.getNumPressure(); i++) {
             pressureSensors.push_back(ConfigurationManager::createPressureSensor(*firstSDI12Talon));
         }
+        
+        for (int i = 0; i < configManager.getNumApogeeAnalog(); i++) {
+            sq202xSensors.push_back(ConfigurationManager::createSQ202XSensor(*firstSDI12Talon));
+        }
     }
     
     for (int i = 0; i < configManager.getNumCO2(); i++) {
@@ -80,6 +84,7 @@ void SensorManager::clearAllSensors() {
     humiditySensors.clear();
     etSensors.clear();
     pressureSensors.clear();
+    sq202xSensors.clear();
 }
 
 std::vector<Talon*> SensorManager::getAllTalons() {
@@ -136,6 +141,10 @@ std::vector<Sensor*> SensorManager::getAllSensors() {
         allSensors.push_back(sensor.get());
     }
     
+    for (auto& sensor : sq202xSensors) {
+        allSensors.push_back(sensor.get());
+    }
+    
     return allSensors;
 }
 
@@ -144,5 +153,5 @@ int SensorManager::getTotalSensorCount() const {
     return 3 + auxTalons.size() + i2cTalons.size() + sdi12Talons.size() +
            haarSensors.size() + apogeeO2Sensors.size() + apogeeSolarSensors.size() +
            soilSensors.size() + gasSensors.size() + humiditySensors.size() +
-           etSensors.size() + pressureSensors.size();
+           etSensors.size() + pressureSensors.size() + sq202xSensors.size();
 }

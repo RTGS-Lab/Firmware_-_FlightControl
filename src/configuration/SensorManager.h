@@ -67,6 +67,7 @@ private:
     std::vector<std::unique_ptr<class T9602>> humiditySensors;
     std::vector<std::unique_ptr<class LI710>> etSensors;
     std::vector<std::unique_ptr<class BaroVue10>> pressureSensors;
+    std::vector<std::unique_ptr<class SQ202X>> sq202xSensors;
 };
 
 #endif // SENSOR_MANAGER_H

@@ -16,6 +16,7 @@
 #include <T9602.h>
 #include <Li710.h>
 #include <BaroVue10.h>
+#include <SDI12AnalogMux.h>
 
 class ConfigurationManager : public IConfiguration {
 public:
@@ -44,7 +45,8 @@ public:
                "\"numApogeeSolar\":0,"
                "\"numCO2\":0,"
                "\"numO2\":0,"
-               "\"numPressure\":0"
+               "\"numPressure\":0,"
+               "\"numAnalogMux\":0"
                "}"
                "}}";
     }
@@ -73,7 +75,8 @@ public:
     int getNumCO2() const { return m_numCO2; }
     int getNumO2() const { return m_numO2; }
     int getNumPressure() const { return m_numPressure; }
-    
+    int getNumAnalogMux() const { return m_numAnalogMux; }
+
     // Static factory methods for creating sensors
     static std::unique_ptr<AuxTalon> createAuxTalon();
     static std::unique_ptr<I2CTalon> createI2CTalon();
@@ -86,7 +89,8 @@ public:
     static std::unique_ptr<T9602> createHumiditySensor();
     static std::unique_ptr<LI710> createETSensor(class ITimeProvider& timeProvider, class ISDI12Talon& talon);
     static std::unique_ptr<BaroVue10> createPressureSensor(SDI12Talon& talon);
-    
+    static std::unique_ptr<SDI12AnalogMux> createAnalogMuxSensor(SDI12Talon& talon);
+
 private:
     // EEPROM addresses for configuration backup
     static const int EEPROM_CONFIG_START = 16;  // Start at address 16 (after accel offsets at 0-11)
@@ -112,6 +116,7 @@ private:
     int m_numCO2;
     int m_numO2;
     int m_numPressure;
+    int m_numAnalogMux;
 
     int m_SystemConfigUid;
     int m_SensorConfigUid;

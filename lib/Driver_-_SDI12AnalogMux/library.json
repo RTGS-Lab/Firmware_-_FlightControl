@@ -1,0 +1,11 @@
+{
+  "name": "SDI12AnalogMux",
+  "keywords": "sdi12, temperature, rtd, pt100, sensor, analog, multiplexer",
+  "description": "Driver for Pico-based SDI-12 PT100 analog multiplexer temperature sensor with 7 RTD channels plus internal temperature monitoring.",
+  "version": "1.0.0",
+  "frameworks": "arduino",
+  "dependencies": {
+    "Driver_-_Sensor": "*",
+    "Driver_-_Talon-SDI12": "*"
+  }
+}

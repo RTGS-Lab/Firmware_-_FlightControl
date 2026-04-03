@@ -47,6 +47,7 @@ void initializeSensorSystem();
 #include <Sensor.h>
 #include <Talon.h>
 #include <BaroVue10.h>
+#include <SDI12AnalogMux.h>
 #include <Kestrel.h>
 #include <KestrelFileHandler.h>
 #include <Haar.h>
@@ -1272,12 +1273,14 @@ int detectTalons(String dummyStr)
 			// logger.enableI2C_Global(true);
 			// logger.enableI2C_OB(false);
 			// talons[i]->begin(Time.now(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //DEBUG!
-			talons[i]->begin(logger.getTime(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
-			// talons[i]->begin(0, dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime! 
+			talons[i]->begin(logger.getTime(), dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime!
+			// talons[i]->begin(0, dummy, dummy1); //If Talon object exists and port has been assigned, initialize it //REPLACE getTime!
+			Serial.println(">>> FlightControl: Talon begin() returned"); //DEBUG!
 			//Serial.println("TALON BEGIN DONE"); //DEBUG!
 			//Serial.flush(); //DEBUG!
-			//delay(10000); //DEBUG!                      
-			logger.enableData(talons[i]->getTalonPort(), false); //Turn data back off to prevent conflict 
+			//delay(10000); //DEBUG!
+			logger.enableData(talons[i]->getTalonPort(), false); //Turn data back off to prevent conflict
+			Serial.println(">>> FlightControl: Disabled data, exiting detectTalons loop"); //DEBUG!
 			//Serial.println("ENABLE DATA DONE"); //DEBUG!
 			// Serial.flush(); //DEBUG!
 			//delay(10000); //DEBUG!
@@ -1289,6 +1292,7 @@ int detectTalons(String dummyStr)
 
 int detectSensors(String dummyStr)
 {
+	Serial.println(">>> FlightControl: detectSensors() START - Power should still be ON from detectTalons"); //DEBUG!
 	/////////////// SENSOR AUTO DETECTION //////////////////////
 	for(int t = 0; t < talons.size(); t++) { //Iterate over each Talon
 	// Serial.println(talons[t]->talonInterface); //DEBUG!
